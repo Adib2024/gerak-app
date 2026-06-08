@@ -1,0 +1,24 @@
+{
+  "short_name": "GERAK",
+  "name": "GERAK — Smart Campus Service Platform",
+  "description": "Smart campus transportation, robe booking, and food delivery system.",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#EF4444",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["utilities", "productivity", "food"]
+}
