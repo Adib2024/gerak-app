@@ -53,13 +53,16 @@ export interface RideBooking {
 }
 
 export interface JubahBooking {
-  height: number;
-  weight: number;
-  gender: 'male' | 'female';
-  size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL';
-  deliveryType: 'pickup' | 'delivery';
-  deliveryAddress?: string;
-  rentalDate: string;
+  fullName: string;
+  icNumber: string;
+  hpNumber: string;
+  university: string;
+  faculty: string;
+  matricId: string;
+  paymentMode: 'pickup' | 'postage';
+  remark: 'Master' | 'PHD' | 'Degree' | 'Diploma';
+  combinedFileName: string;
+  cost: number;
   status: 'ordered' | 'cleaning' | 'packaging' | 'delivering' | 'delivered';
   returnScheduled: boolean;
   returnMethod?: 'self' | 'locker' | 'courier';
@@ -111,7 +114,7 @@ interface AppContextType {
 
   // Jubah Delivery Module
   jubahBooking: JubahBooking | null;
-  bookJubah: (height: number, weight: number, gender: 'male' | 'female', deliveryType: 'pickup' | 'delivery', address?: string) => void;
+  bookJubah: (fullName: string, icNumber: string, hpNumber: string, university: string, faculty: string, matricId: string, paymentMode: 'pickup' | 'postage', remark: 'Master' | 'PHD' | 'Degree' | 'Diploma', combinedFileName: string) => void;
   scheduleReturn: (method: 'self' | 'locker' | 'courier', date: string, time: string) => void;
   cancelJubahBooking: () => void;
 
@@ -145,7 +148,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
       id: '1',
-      title: 'Welcome to GERAK!',
+      title: 'Welcome to gerak!',
       description: 'Your Smart Campus Service Platform is ready. Check out Transport, Jubah, or Food services.',
       time: 'Just now',
       isRead: false,
@@ -211,7 +214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       name: name || 'Student Gerak',
       isLoggedIn: true
     }));
-    addNotification('Login Successful', 'Welcome back to GERAK. Stay fast, stay mobile!', 'system');
+    addNotification('Login Successful', 'Welcome back to gerak. Stay fast, stay mobile!', 'system');
     return true;
   };
 
@@ -225,7 +228,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       points: 100,
       isLoggedIn: true
     });
-    addNotification('Account Created', 'Welcome to GERAK! You have been gifted RM10.00 wallet credit.', 'system');
+    addNotification('Account Created', 'Welcome to gerak! You have been gifted RM10.00 wallet credit.', 'system');
     return true;
   };
 
@@ -332,7 +335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           return null;
         });
-        addNotification('Trip Completed', `You have arrived at ${destination}. Thank you for riding GERAK.`, 'transport');
+        addNotification('Trip Completed', `You have arrived at ${destination}. Thank you for riding gerak.`, 'transport');
         clearInterval(intervalId);
         setRideTimer(null);
       }
@@ -378,65 +381,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // 4. Jubah Delivery Operations
-  const calculateJubahSize = (height: number, weight: number): 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' => {
-    if (height < 155) return 'XS';
-    if (height < 165) return weight < 60 ? 'S' : 'M';
-    if (height < 175) return weight < 70 ? 'M' : 'L';
-    if (height < 185) return weight < 85 ? 'L' : 'XL';
-    return 'XXL';
-  };
+  const bookJubah = (
+    fullName: string,
+    icNumber: string,
+    hpNumber: string,
+    university: string,
+    faculty: string,
+    matricId: string,
+    paymentMode: 'pickup' | 'postage',
+    remark: 'Master' | 'PHD' | 'Degree' | 'Diploma',
+    combinedFileName: string,
+  ) => {
+    const cost = paymentMode === 'postage' ? 80.00 : 55.00;
 
-  const bookJubah = (height: number, weight: number, gender: 'male' | 'female', deliveryType: 'pickup' | 'delivery', address?: string) => {
-    const size = calculateJubahSize(height, weight);
-    const cost = deliveryType === 'delivery' ? 15.00 : 0.00;
-    
-    if (cost > 0 && user.balance < cost) {
-      addNotification('Booking Failed', 'Insufficient funds for robe home delivery (RM15.00 required).', 'system');
+    if (user.balance < cost) {
+      addNotification('Booking Failed', `Insufficient funds (RM${cost.toFixed(2)} required).`, 'system');
       return;
     }
 
-    if (cost > 0) {
-      deductWallet(cost);
-      addPoints(75);
-    }
-
-    const today = new Date();
-    const rentalDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+    deductWallet(cost);
+    addPoints(paymentMode === 'postage' ? 200 : 150);
 
     const newBooking: JubahBooking = {
-      height,
-      weight,
-      gender,
-      size,
-      deliveryType,
-      deliveryAddress: address,
-      rentalDate,
+      fullName,
+      icNumber,
+      hpNumber,
+      university,
+      faculty,
+      matricId,
+      paymentMode,
+      remark,
+      combinedFileName,
+      cost,
       status: 'ordered',
-      returnScheduled: false
+      returnScheduled: false,
     };
 
     setJubahBooking(newBooking);
-    addNotification('Robe Booking Confirmed', `Size ${size} gown reserved. Rental window starts ${rentalDate}.`, 'jubah');
-    
-    // Simulate logistics updates
+    addNotification('Robe Booking Confirmed', `Booking for ${fullName} (${remark}) confirmed. Payment: RM${cost.toFixed(2)}.`, 'jubah');
+
+    setTimeout(() => setJubahBooking(prev => prev ? { ...prev, status: 'cleaning' } : null), 15000);
+    setTimeout(() => setJubahBooking(prev => prev ? { ...prev, status: 'packaging' } : null), 30000);
     setTimeout(() => {
-      setJubahBooking(prev => prev ? { ...prev, status: 'cleaning' } : null);
-    }, 15000);
-    setTimeout(() => {
-      setJubahBooking(prev => prev ? { ...prev, status: 'packaging' } : null);
-    }, 30000);
-    setTimeout(() => {
-      setJubahBooking(prev => prev ? { ...prev, status: deliveryType === 'delivery' ? 'delivering' : 'delivered' } : null);
+      setJubahBooking(prev => prev ? { ...prev, status: paymentMode === 'postage' ? 'delivering' : 'delivered' } : null);
       addNotification(
-        deliveryType === 'delivery' ? 'Robe Out for Delivery' : 'Robe Ready for Collection', 
-        deliveryType === 'delivery' ? 'Rider is carrying your package.' : 'Visit Dewan Peperiksaan KK1 for self pick-up.', 
+        paymentMode === 'postage' ? 'Robe Out for Delivery' : 'Robe Ready for Collection',
+        paymentMode === 'postage' ? 'Rider is on the way with your package.' : 'Visit the collection counter to pick up your robe.',
         'jubah'
       );
     }, 45000);
-    if (deliveryType === 'delivery') {
+    if (paymentMode === 'postage') {
       setTimeout(() => {
         setJubahBooking(prev => prev ? { ...prev, status: 'delivered' } : null);
-        addNotification('Robe Delivered', 'Your convocation bundle was dropped at ' + address, 'jubah');
+        addNotification('Robe Delivered', 'Your convocation bundle has been delivered.', 'jubah');
       }, 60000);
     }
   };
@@ -455,11 +452,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const cancelJubahBooking = () => {
     if (jubahBooking) {
-      if (jubahBooking.deliveryType === 'delivery') {
-        topUpWallet(15.00); // refund delivery fee
-      }
+      topUpWallet(jubahBooking.cost);
       setJubahBooking(null);
-      addNotification('Booking Cancelled', 'Convocation robe order has been cancelled.', 'jubah');
+      addNotification('Booking Cancelled', `Convocation robe order cancelled. RM${jubahBooking.cost.toFixed(2)} refunded.`, 'jubah');
     }
   };
 

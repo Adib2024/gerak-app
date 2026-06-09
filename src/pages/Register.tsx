@@ -46,8 +46,8 @@ export const Register: React.FC = () => {
     <div className="flex-1 bg-slate-50 flex flex-col justify-between p-6 select-none animate-fade-in h-full">
       {/* Top Section: Header */}
       <div className="flex flex-col items-center text-center mt-4">
-        <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center font-black text-2xl shadow-lg shadow-primary/20 mb-2">
-          G
+        <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center font-black text-2xl shadow-lg shadow-primary/20 mb-2" style={{ color: '#0f172a' }}>
+          g
         </div>
         <h2 className="text-xl font-black text-slate-800 tracking-tight font-heading m-0">
           Create Gerak Account

@@ -9,7 +9,7 @@ export const Header: React.FC = () => {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const handleQuickTopUp = (e: React.FormEvent) => {
+  const handleQuickTopUp = (e: React.SyntheticEvent) => {
     e.preventDefault();
     const val = parseFloat(topUpAmount);
     if (!isNaN(val) && val > 0) {
@@ -30,12 +30,12 @@ export const Header: React.FC = () => {
           className="flex items-center gap-2 cursor-pointer transition active:scale-95"
           onClick={() => setCurrentPage('dashboard')}
         >
-          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white font-extrabold text-lg shadow-md shadow-primary/20">
-            G
+          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center font-extrabold text-lg shadow-md shadow-primary/20" style={{ color: '#0f172a' }}>
+            g
           </div>
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-800 m-0 leading-none">
-              GERAK
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-800 m-0 leading-none" style={{ fontFamily: 'Prata, serif' }}>
+              ger<span style={{ color: '#38bdf8' }}>a</span>k
             </h1>
             <span className="text-[10px] text-primary font-bold tracking-wider uppercase">
               Smart Campus

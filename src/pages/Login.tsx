@@ -10,7 +10,7 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!matricNo.trim() || !password.trim()) {
       setError('Please fill in all credentials.');
@@ -43,11 +43,11 @@ export const Login: React.FC = () => {
     <div className="flex-1 bg-slate-50 flex flex-col justify-between p-6 select-none animate-fade-in h-full">
       {/* Top Section: Branding */}
       <div className="flex flex-col items-center text-center mt-6">
-        <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-3xl shadow-lg shadow-primary/20 mb-3 animate-float">
-          G
+        <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center font-black text-3xl shadow-lg shadow-primary/20 mb-3 animate-float" style={{ color: '#0f172a' }}>
+          g
         </div>
         <h2 className="text-2xl font-black text-slate-800 tracking-tight font-heading m-0">
-          Sign In to GERAK
+          Sign In to <span style={{ fontFamily: 'Prata, serif', fontSize: '2.5rem', lineHeight: 1 }}>ger<span style={{ color: '#38bdf8' }}>a</span>k</span>
         </h2>
         <p className="text-slate-400 text-xs mt-1 font-semibold">
           Smart Campus Unified Credentials Node

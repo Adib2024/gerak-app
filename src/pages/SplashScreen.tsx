@@ -36,8 +36,8 @@ export const SplashScreen: React.FC = () => {
       {/* Center Branding */}
       <div className="flex flex-col items-center gap-4 animate-float">
         {/* Animated Glowing Logo Mark */}
-        <div className="w-24 h-24 rounded-[32px] bg-white text-primary flex items-center justify-center font-black text-6xl shadow-[0_20px_50px_rgba(16,185,129,0.3)] border-4 border-emerald-300/40 relative">
-          G
+        <div className="w-24 h-24 rounded-[32px] bg-white flex items-center justify-center font-black text-6xl shadow-[0_20px_50px_rgba(16,185,129,0.3)] border-4 border-emerald-300/40 relative" style={{ color: '#0f172a' }}>
+          g
           {/* Pulsing ring indicator */}
           <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-amber-400 rounded-full border-4 border-white flex items-center justify-center text-[10px] font-extrabold text-slate-800 shadow-md">
             ★
@@ -45,8 +45,8 @@ export const SplashScreen: React.FC = () => {
         </div>
 
         <div className="text-center mt-2">
-          <h1 className="text-4xl font-extrabold tracking-tight m-0 uppercase font-heading drop-shadow-md">
-            GERAK
+          <h1 className="text-7xl font-extrabold tracking-tight m-0 drop-shadow-md" style={{ fontFamily: 'Prata, serif' }}>
+            <span style={{ color: '#ffffff' }}>ger</span><span style={{ color: '#38bdf8' }}>a</span><span style={{ color: '#ffffff' }}>k</span>
           </h1>
           <p className="text-emerald-100 font-bold text-xs tracking-wider uppercase mt-1 opacity-90">
             Smart Campus Service Platform

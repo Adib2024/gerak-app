@@ -82,7 +82,7 @@ export const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. GERAKPAY WALLET CONSOLE */}
+      {/* 2. gerakPay WALLET CONSOLE */}
       <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm">
         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5 pl-1">
           <Wallet className="w-4 h-4 text-slate-400" />
@@ -141,7 +141,7 @@ export const Profile: React.FC = () => {
       <div className="bg-white border border-slate-100 rounded-3xl p-2.5 shadow-sm flex flex-col gap-1">
         
         <button 
-          onClick={() => alert('Campus Information Guide: GERAK connects college dining stalls, robe booking portals, and shuttle systems. Developed by Universiti Perdana developers.')}
+          onClick={() => alert('Campus Information Guide: gerak connects college dining stalls, robe booking portals, and shuttle systems. Developed by Universiti Perdana developers.')}
           className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition text-left"
         >
           <div className="flex items-center gap-3">
