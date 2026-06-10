@@ -1,10 +1,7 @@
-const CACHE_NAME = 'gerak-cache-v1';
+const CACHE_NAME = 'gerak-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/src/main.tsx',
-  '/src/index.css',
-  '/src/App.tsx',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png'
