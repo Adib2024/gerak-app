@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -121,6 +121,127 @@ const InstallButton: React.FC = () => {
   );
 };
 
+const SwipeBackGesture: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { goBack, canGoBack } = useApp();
+
+  const [renderDragX, setRenderDragX] = useState(0);
+  const dragXRef    = useRef(0);
+  const isDragRef   = useRef(false);
+  const startXRef   = useRef(0);
+  const startYRef   = useRef(0);
+  const dirLockRef  = useRef<'h' | 'v' | null>(null);
+  const canGoBackRef = useRef(canGoBack);
+  const goBackRef    = useRef(goBack);
+
+  useEffect(() => { canGoBackRef.current = canGoBack; }, [canGoBack]);
+  useEffect(() => { goBackRef.current = goBack; }, [goBack]);
+
+  const EDGE    = 40;  // px from left edge to start gesture
+  const TRIGGER = 90;  // px drag distance to trigger back
+
+  useEffect(() => {
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      startXRef.current  = t.clientX;
+      startYRef.current  = t.clientY;
+      isDragRef.current  = t.clientX < EDGE && canGoBackRef.current;
+      dirLockRef.current = null;
+      dragXRef.current   = 0;
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!isDragRef.current) return;
+      const t  = e.touches[0];
+      const dx = t.clientX - startXRef.current;
+      const dy = Math.abs(t.clientY - startYRef.current);
+
+      if (!dirLockRef.current) {
+        if (Math.abs(dx) > 6 || dy > 6) {
+          dirLockRef.current = Math.abs(dx) >= dy ? 'h' : 'v';
+        } else return;
+      }
+      if (dirLockRef.current === 'v') { isDragRef.current = false; return; }
+
+      if (dx > 0) {
+        dragXRef.current = Math.min(dx, window.innerWidth * 0.85);
+        setRenderDragX(dragXRef.current);
+        e.preventDefault();
+      }
+    };
+
+    const onEnd = () => {
+      if (!isDragRef.current) return;
+      isDragRef.current = false;
+      if (dragXRef.current >= TRIGGER) goBackRef.current();
+      dragXRef.current = 0;
+      setRenderDragX(0);
+    };
+
+    window.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove',  onMove,  { passive: false });
+    window.addEventListener('touchend',   onEnd,   { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', onStart);
+      window.removeEventListener('touchmove',  onMove);
+      window.removeEventListener('touchend',   onEnd);
+    };
+  }, []);
+
+  const progress = Math.min(renderDragX / TRIGGER, 1);
+  const dragging = renderDragX > 0;
+
+  return (
+    <>
+      {/* Shadow layer revealed behind the sliding page */}
+      {dragging && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9990,
+            background: `linear-gradient(to right, rgba(0,0,0,0.08), rgba(0,0,0,0.18))`,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* Sliding page */}
+      <div
+        style={{
+          transform: dragging ? `translateX(${renderDragX}px)` : 'translateX(0)',
+          transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)',
+          position: 'relative', zIndex: 9991,
+        }}
+      >
+        {children}
+      </div>
+
+      {/* Back arrow circle that floats on left edge */}
+      {dragging && (
+        <div
+          style={{
+            position: 'fixed',
+            left: Math.max(8, renderDragX - 30),
+            top: '50%',
+            transform: `translateY(-50%) scale(${0.55 + progress * 0.45})`,
+            width: 44, height: 44,
+            borderRadius: '50%',
+            background: progress >= 1 ? '#0f172a' : 'rgba(255,255,255,0.96)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 99999, pointerEvents: 'none',
+            transition: 'background 0.15s',
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke={progress >= 1 ? 'white' : '#1e293b'}
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+        </div>
+      )}
+    </>
+  );
+};
+
 const AppContent: React.FC = () => {
   const { currentPage } = useApp();
 
@@ -162,7 +283,9 @@ function App() {
   return (
     <AppProvider>
       <InstallButton />
-      <AppContent />
+      <SwipeBackGesture>
+        <AppContent />
+      </SwipeBackGesture>
     </AppProvider>
   );
 }

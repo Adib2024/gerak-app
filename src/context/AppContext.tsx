@@ -92,6 +92,8 @@ interface AppContextType {
   // Navigation & Session
   currentPage: ActivePage;
   setCurrentPage: (page: ActivePage) => void;
+  goBack: () => void;
+  canGoBack: boolean;
   user: UserSession;
   login: (matricNo: string, name?: string) => boolean;
   register: (name: string, matricNo: string, email: string) => boolean;
@@ -134,7 +136,25 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Navigation & Session
-  const [currentPage, setCurrentPage] = useState<ActivePage>('splash');
+  const [currentPage, _setCurrentPage] = useState<ActivePage>('splash');
+  const [pageHistory, setPageHistory] = useState<ActivePage[]>([]);
+
+  const HISTORY_EXCLUDED: ActivePage[] = ['splash', 'login'];
+
+  const setCurrentPage = (page: ActivePage) => {
+    if (!HISTORY_EXCLUDED.includes(currentPage)) {
+      setPageHistory(prev => [...prev, currentPage]);
+    }
+    _setCurrentPage(page);
+  };
+
+  const goBack = () => {
+    setPageHistory(prev => {
+      if (prev.length === 0) return prev;
+      _setCurrentPage(prev[prev.length - 1]);
+      return prev.slice(0, -1);
+    });
+  };
   const [user, setUser] = useState<UserSession>({
     name: 'Ahmad Faiz',
     matricNo: 'WIF210045',
@@ -233,12 +253,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
+    setPageHistory([]);
     setUser(prev => ({ ...prev, isLoggedIn: false }));
     setActiveRide(null);
     setJubahBooking(null);
     setCart([]);
     setActiveFoodOrder(null);
-    setCurrentPage('login');
+    _setCurrentPage('login');
   };
 
   const topUpWallet = (amount: number) => {
@@ -570,6 +591,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         currentPage,
         setCurrentPage,
+        goBack,
+        canGoBack: pageHistory.length > 0,
         user,
         login,
         register,
