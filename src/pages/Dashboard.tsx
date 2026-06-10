@@ -15,12 +15,12 @@ export const Dashboard: React.FC = () => {
     },
     {
       title: 'GerakPay 10% Cashback!',
-      subtitle: 'Load RM50.00 or more in your virtual wallet to receive immediate bonus campus points.',
+      subtitle: 'Top up RM50.00 or more in your GerakPay wallet to receive immediate bonus campus points.',
       tag: 'PROMO',
       color: 'from-emerald-600 to-teal-500'
     },
     {
-      title: 'Kampus Food Express',
+      title: 'Campus Food Express',
       subtitle: 'Enjoy RM3.00 flat delivery fees across all college dormitories. Browse local stalls now.',
       tag: 'FOOD DEAL',
       color: 'from-amber-500 to-orange-500'
@@ -65,7 +65,7 @@ export const Dashboard: React.FC = () => {
             onClick={() => setCurrentPage('profile')}
             className="cursor-pointer active:scale-95 transition bg-white/10 rounded-2xl p-2.5 flex flex-col hover:bg-white/15"
           >
-            <span className="text-[9px] text-emerald-200 font-bold uppercase tracking-wider">GerakPay Credit</span>
+            <span className="text-[9px] text-emerald-200 font-bold uppercase tracking-wider">GerakPay Balance</span>
             <span className="text-lg font-black mt-0.5">RM{user.balance.toFixed(2)}</span>
           </div>
           <div 
@@ -91,10 +91,10 @@ export const Dashboard: React.FC = () => {
             <div>
               <div className="text-[10px] text-blue-600 font-extrabold uppercase tracking-wider">Active Shuttle Booking</div>
               <div className="text-xs font-black text-slate-800">
-                {activeRide.status === 'searching' && 'Searching for driver...'}
+                {activeRide.status === 'searching' && 'Searching for Driver'}
                 {activeRide.status === 'assigned' && 'Driver Assigned'}
-                {activeRide.status === 'arriving' && 'Driver is Arriving!'}
-                {activeRide.status === 'active' && 'Trip in progress...'}
+                {activeRide.status === 'arriving' && 'Driver is Arriving'}
+                {activeRide.status === 'active' && 'Trip In Progress'}
               </div>
             </div>
           </div>
@@ -115,8 +115,8 @@ export const Dashboard: React.FC = () => {
               <div className="text-[10px] text-amber-600 font-extrabold uppercase tracking-wider">Active Meal Delivery</div>
               <div className="text-xs font-black text-slate-800">
                 {activeFoodOrder.status === 'placed' && 'Order Placed'}
-                {activeFoodOrder.status === 'preparing' && 'Kitchen Preparing...'}
-                {activeFoodOrder.status === 'delivering' && 'Rider on the way!'}
+                {activeFoodOrder.status === 'preparing' && 'Kitchen Preparing'}
+                {activeFoodOrder.status === 'delivering' && 'Rider on the Way'}
               </div>
             </div>
           </div>

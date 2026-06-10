@@ -120,7 +120,7 @@ export const Jubah: React.FC = () => {
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 Full Name <span className="text-danger">*</span>
               </label>
-              <p className="text-[9px] text-slate-400 -mt-0.5">Small capital letter. Example: MUHAMMAD AMIRUDDIN BIN AHMAD</p>
+              <p className="text-[9px] text-slate-400 -mt-0.5">Use uppercase letters. Example: MUHAMMAD AMIRUDDIN BIN AHMAD</p>
               <input
                 type="text"
                 value={fullName}
@@ -170,7 +170,7 @@ export const Jubah: React.FC = () => {
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 Matric ID <span className="text-danger">*</span>
               </label>
-              <p className="text-[9px] text-slate-400 -mt-0.5">Capital letter. Example: HB19021</p>
+              <p className="text-[9px] text-slate-400 -mt-0.5">Use uppercase letters. Example: HB19021</p>
               <input
                 type="text"
                 value={matricId}
@@ -256,7 +256,7 @@ export const Jubah: React.FC = () => {
             {[
               {
                 value: 'pickup' as const,
-                label: 'Full payment (RM55) — Pickup Sahaja',
+                label: 'Full payment (RM55) — Self Pickup',
                 desc: 'Service charge for pickup only at UMPSA Gambang on your scheduled date. We store, manage and maintain all items (jubah, mortarboard, kad jemputan, cenderahati & selempang) until handover.',
               },
               {
@@ -304,7 +304,7 @@ export const Jubah: React.FC = () => {
             {user.balance < cost && (
               <div className="bg-danger/10 border border-danger/20 text-danger rounded-xl p-3 text-[10px] font-bold flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
-                Wallet credit low (RM{user.balance.toFixed(2)} available). Please top up.
+                Insufficient GerakPay balance (RM{user.balance.toFixed(2)} available). Please top up.
               </div>
             )}
           </div>

@@ -124,7 +124,7 @@ export const Transport: React.FC = () => {
             {user.balance < fare && (
               <div className="bg-danger/10 border border-danger/20 text-danger rounded-xl p-3 text-[10px] font-bold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
-                Wallet credit low (RM{user.balance.toFixed(2)} available). Please Top-up.
+                Insufficient GerakPay balance (RM{user.balance.toFixed(2)} available). Please top up.
               </div>
             )}
 
@@ -148,8 +148,8 @@ export const Transport: React.FC = () => {
                 {activeRide.status.toUpperCase()}
               </span>
               <h3 className="text-sm font-black text-slate-800 m-0 mt-1.5">
-                {activeRide.status === 'searching' && 'Searching for Shuttle...'}
-                {activeRide.status === 'assigned' && 'Driver is Assigned'}
+                {activeRide.status === 'searching' && 'Searching for Shuttle'}
+                {activeRide.status === 'assigned' && 'Driver Assigned'}
                 {activeRide.status === 'arriving' && 'Driver is Arriving'}
                 {activeRide.status === 'active' && 'Trip In Progress'}
               </h3>

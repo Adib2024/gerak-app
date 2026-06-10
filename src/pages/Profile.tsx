@@ -82,11 +82,11 @@ export const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. gerakPay WALLET CONSOLE */}
+      {/* 2. GerakPay WALLET CONSOLE */}
       <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm">
         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5 pl-1">
           <Wallet className="w-4 h-4 text-slate-400" />
-          GerakPay Top-Up Hub
+          GerakPay Top Up
         </h3>
 
         <div className="flex items-center justify-between mb-4">

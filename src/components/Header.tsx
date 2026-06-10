@@ -98,7 +98,7 @@ export const Header: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Wallet className="w-5 h-5 text-primary animate-bounce" />
-                GerakPay Top-Up
+                GerakPay Top Up
               </h3>
               <button 
                 onClick={() => setShowTopUp(false)}
@@ -150,7 +150,7 @@ export const Header: React.FC = () => {
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-hover active:scale-[0.99] text-white font-extrabold py-3 rounded-xl shadow-lg shadow-primary/20 transition"
               >
-                Confirm Load RM{parseFloat(topUpAmount || '0').toFixed(2)}
+                Confirm Top Up RM{parseFloat(topUpAmount || '0').toFixed(2)}
               </button>
             </form>
           </div>

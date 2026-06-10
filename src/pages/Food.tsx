@@ -109,7 +109,7 @@ export const Food: React.FC = () => {
 
   const handleCheckout = () => {
     if (user.balance < grandTotal) {
-      alert('Your GerakPay credit is insufficient. Please top up your wallet in the Header.');
+      alert('Insufficient GerakPay balance. Please top up.');
       return;
     }
     const success = checkoutFoodOrder();
@@ -363,7 +363,7 @@ export const Food: React.FC = () => {
               {/* Balance Warning */}
               {user.balance < grandTotal && (
                 <div className="bg-danger/10 border border-danger/20 text-danger rounded-xl p-2.5 text-[10px] font-bold text-center">
-                  Low wallet funds. Please Load credits into your account.
+                  Insufficient GerakPay balance. Please top up.
                 </div>
               )}
 
