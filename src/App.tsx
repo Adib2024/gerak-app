@@ -18,17 +18,37 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+const isIosSafari = (): boolean => {
+  const ua = window.navigator.userAgent;
+  const isIos = /iphone|ipad|ipod/i.test(ua);
+  const isSafari = /safari/i.test(ua) && !/crios|fxios|opios|edgios/i.test(ua);
+  const isStandalone = ('standalone' in window.navigator) && (window.navigator as any).standalone === true;
+  return isIos && isSafari && !isStandalone;
+};
+
 const InstallButton: React.FC = () => {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
+    // Chrome/Android/Desktop install prompt
     const handler = (e: Event) => {
       e.preventDefault();
       setInstallEvent(e as BeforeInstallPromptEvent);
     };
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', () => setInstalled(true));
+
+    // iOS Safari — show guide banner after short delay
+    if (isIosSafari()) {
+      const timer = setTimeout(() => setShowIosGuide(true), 2000);
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handler);
+        clearTimeout(timer);
+      };
+    }
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
@@ -42,6 +62,28 @@ const InstallButton: React.FC = () => {
     }
   };
 
+  // iOS Safari guide banner
+  if (showIosGuide && !dismissed) {
+    return (
+      <div className="fixed bottom-6 left-3 right-3 z-[9999] bg-slate-900 text-white rounded-2xl p-4 shadow-2xl flex gap-3 items-start animate-slide-up">
+        <div className="text-2xl shrink-0">📲</div>
+        <div className="flex-1">
+          <p className="text-sm font-bold leading-tight">Install gerak on your iPhone</p>
+          <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+            Tap <span className="bg-slate-700 rounded px-1.5 py-0.5 font-bold">Share</span> <span className="text-slate-400">↑</span> then <span className="bg-slate-700 rounded px-1.5 py-0.5 font-bold">Add to Home Screen</span>
+          </p>
+        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-slate-400 hover:text-white text-lg font-bold shrink-0 -mt-1"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  // Chrome/Android/Desktop button
   if (!installEvent || installed) return null;
 
   return (
