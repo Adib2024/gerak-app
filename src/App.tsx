@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -11,6 +11,49 @@ import { Jubah } from './pages/Jubah';
 import { Food } from './pages/Food';
 import { Profile } from './pages/Profile';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { Download } from 'lucide-react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+const InstallButton: React.FC = () => {
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallEvent(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    window.addEventListener('appinstalled', () => setInstalled(true));
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installEvent) return;
+    await installEvent.prompt();
+    const { outcome } = await installEvent.userChoice;
+    if (outcome === 'accepted') {
+      setInstallEvent(null);
+      setInstalled(true);
+    }
+  };
+
+  if (!installEvent || installed) return null;
+
+  return (
+    <button
+      onClick={handleInstall}
+      className="fixed top-4 left-4 z-[9999] flex items-center gap-2 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-sm px-4 py-2 rounded-full shadow-md transition active:scale-95"
+    >
+      <Download className="w-4 h-4" />
+      Install App
+    </button>
+  );
+};
 
 const AppContent: React.FC = () => {
   const { currentPage } = useApp();
@@ -42,13 +85,8 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="mobile-container flex flex-col h-full bg-white select-none">
-      {/* Header (automatically handles page-specific visibility internally) */}
       <Header />
-      
-      {/* Active Scrollable Page Screen viewport */}
       {renderPage()}
-      
-      {/* Footer bottom navigation bar (automatically handles page-specific visibility internally) */}
       <BottomNav />
     </div>
   );
@@ -57,6 +95,7 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <AppProvider>
+      <InstallButton />
       <AppContent />
     </AppProvider>
   );
