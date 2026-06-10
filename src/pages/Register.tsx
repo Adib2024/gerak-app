@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldAlert, User, Mail, Lock, ArrowRight } from 'lucide-react';
+import { ShieldAlert, User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const { register, setCurrentPage } = useApp();
@@ -8,6 +8,8 @@ export const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -102,13 +104,20 @@ export const Register: React.FC = () => {
                 <Lock className="w-3.5 h-3.5" />
               </span>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-9 text-xs text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
                 placeholder="At least 6 characters"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+              >
+                {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
 
@@ -122,13 +131,20 @@ export const Register: React.FC = () => {
                 <Lock className="w-3.5 h-3.5" />
               </span>
               <input
-                type="password"
+                type={showConfirm ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-9 text-xs text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
                 placeholder="Re-enter password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+              >
+                {showConfirm ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
 

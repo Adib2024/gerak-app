@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const { login, setCurrentPage } = useApp();
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
+  const [email, setEmail]           = useState('');
+  const [password, setPassword]     = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState('');
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -71,13 +72,20 @@ export const Login: React.FC = () => {
                 <Lock className="w-4 h-4" />
               </span>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-10 text-sm text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
                 placeholder="••••••••"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
