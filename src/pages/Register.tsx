@@ -12,10 +12,10 @@ export const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!name || !matricNo || !email || !password || !confirmPassword) {
-      setError('Please fill in all standard fields.');
+      setError('Please fill in all fields.');
       return;
     }
     if (password !== confirmPassword) {
@@ -23,23 +23,15 @@ export const Register: React.FC = () => {
       return;
     }
     if (password.length < 6) {
-      setError('Password must exceed 5 characters.');
+      setError('Password must be at least 6 characters.');
       return;
     }
 
     setLoading(true);
     setError('');
-
-    // Simulate account setup and credentials validation
-    setTimeout(() => {
-      const success = register(name, matricNo, email);
-      setLoading(false);
-      if (success) {
-        setCurrentPage('dashboard');
-      } else {
-        setError('Registration failed. Verify matric and email formats.');
-      }
-    }, 1200);
+    const { error: authError } = await register(name, matricNo, email, password);
+    setLoading(false);
+    if (authError) setError(authError);
   };
 
   return (

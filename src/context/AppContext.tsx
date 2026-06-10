@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 // Definitions
 export type ActivePage =
@@ -95,8 +96,8 @@ interface AppContextType {
   goBack: () => void;
   canGoBack: boolean;
   user: UserSession;
-  login: (matricNo: string, name?: string) => boolean;
-  register: (name: string, matricNo: string, email: string) => boolean;
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  register: (name: string, matricNo: string, email: string, password: string) => Promise<{ error: string | null }>;
   logout: () => void;
   topUpWallet: (amount: number) => void;
   deductWallet: (amount: number) => boolean;
@@ -156,11 +157,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
   const [user, setUser] = useState<UserSession>({
-    name: 'Ahmad Faiz',
-    matricNo: 'WIF210045',
-    email: 'faiz.ahmad@student.um.edu.my',
-    balance: 55.50,
-    points: 340,
+    name: '',
+    matricNo: '',
+    email: '',
+    balance: 0,
+    points: 0,
     isLoggedIn: false,
   });
 
@@ -225,60 +226,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [rideTimer, foodTimer]);
 
-  // 1. Session Operations
-  const login = (matricNo: string, name?: string): boolean => {
-    if (matricNo.trim().length < 5) return false;
-    setUser(prev => ({
-      ...prev,
-      matricNo: matricNo.toUpperCase(),
-      name: name || 'Student Gerak',
-      isLoggedIn: true
-    }));
-    addNotification('Login Successful', 'Welcome back to gerak. Stay fast, stay mobile!', 'system');
-    return true;
+  // ── Supabase: restore session on app load ──────────────────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) loadProfile(session.user.id);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setUser(prev => ({ ...prev, isLoggedIn: false }));
+      }
+    });
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadProfile = async (userId: string) => {
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (data) {
+      setUser({
+        name: data.name,
+        matricNo: data.matric_no,
+        email: data.email,
+        balance: Number(data.balance),
+        points: data.points,
+        isLoggedIn: true,
+      });
+      setPageHistory([]);
+      _setCurrentPage('dashboard');
+    }
   };
 
-  const register = (name: string, matricNo: string, email: string): boolean => {
-    if (!name || !matricNo || !email) return false;
-    setUser({
-      name,
-      matricNo: matricNo.toUpperCase(),
-      email,
-      balance: 10.00, // free starter credit
-      points: 100,
-      isLoggedIn: true
+  // ── Supabase helper: persist balance/points ────────────────────────
+  const persistProfile = (balance: number, points: number) => {
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      if (u) supabase.from('profiles').update({ balance, points }).eq('id', u.id);
     });
-    addNotification('Account Created', 'Welcome to gerak! You have been gifted RM10.00 wallet credit.', 'system');
-    return true;
+  };
+
+  // 1. Session Operations
+  const login = async (email: string, password: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) await loadProfile(authUser.id);
+    return { error: null };
+  };
+
+  const register = async (name: string, matricNo: string, email: string, password: string): Promise<{ error: string | null }> => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, matric_no: matricNo.toUpperCase() } },
+    });
+    if (error) return { error: error.message };
+    // Auto sign-in after signup (requires email confirmations disabled in Supabase)
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr) return { error: 'Account created! Please sign in.' };
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) await loadProfile(authUser.id);
+    return { error: null };
   };
 
   const logout = () => {
     setPageHistory([]);
-    setUser(prev => ({ ...prev, isLoggedIn: false }));
+    setUser({ name: '', matricNo: '', email: '', balance: 0, points: 0, isLoggedIn: false });
     setActiveRide(null);
     setJubahBooking(null);
     setCart([]);
     setActiveFoodOrder(null);
     _setCurrentPage('login');
+    supabase.auth.signOut();
   };
 
   const topUpWallet = (amount: number) => {
-    setUser(prev => ({
-      ...prev,
-      balance: prev.balance + amount,
-      points: prev.points + Math.floor(amount * 2)
-    }));
+    const newBalance = user.balance + amount;
+    const newPoints  = user.points + Math.floor(amount * 2);
+    setUser(prev => ({ ...prev, balance: newBalance, points: newPoints }));
+    persistProfile(newBalance, newPoints);
     addNotification('Wallet Top-Up', `RM${amount.toFixed(2)} loaded successfully to GerakPay.`, 'system');
   };
 
   const deductWallet = (amount: number): boolean => {
     if (user.balance < amount) return false;
-    setUser(prev => ({ ...prev, balance: prev.balance - amount }));
+    const newBalance = user.balance - amount;
+    setUser(prev => ({ ...prev, balance: newBalance }));
+    persistProfile(newBalance, user.points);
     return true;
   };
 
   const addPoints = (points: number) => {
-    setUser(prev => ({ ...prev, points: prev.points + points }));
+    const newPoints = user.points + points;
+    setUser(prev => ({ ...prev, points: newPoints }));
+    persistProfile(user.balance, newPoints);
   };
 
   // 2. Notification Operations
