@@ -35,7 +35,7 @@ export const Transport: React.FC = () => {
     setFare(calculatedFare);
   }, [pickup, destination]);
 
-  const handleBook = (e: React.FormEvent) => {
+  const handleBook = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (pickup === destination) {
       alert('Pickup and Destination cannot be the exact same building.');
@@ -58,7 +58,7 @@ export const Transport: React.FC = () => {
         <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm">
           <h3 className="text-base font-black text-slate-800 mb-4 flex items-center gap-2">
             <Compass className="w-5 h-5 text-primary" />
-            Book a Campus Ride
+            Book a Gerak Car
           </h3>
 
           <form onSubmit={handleBook} className="flex flex-col gap-4">

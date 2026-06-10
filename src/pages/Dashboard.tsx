@@ -182,7 +182,7 @@ export const Dashboard: React.FC = () => {
               <Car className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="text-base font-extrabold text-slate-800 m-0">Campus Shuttles</h4>
+              <h4 className="text-base font-extrabold text-slate-800 m-0">Gerak Car</h4>
               <p className="text-xs text-slate-400 font-medium mt-0.5">
                 Book point-to-point campus travel. Live path tracking.
               </p>
