@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import { useApp } from '../context/AppContext';
 
@@ -88,18 +88,32 @@ const STATUS_LABEL: Record<string, string> = {
   active:    '🚀  Trip in progress',
 };
 
+const makeUserDotEl = (): HTMLElement => {
+  const el = document.createElement('div');
+  el.style.cssText = 'width:20px;height:20px;position:relative;';
+  el.innerHTML = `
+    <style>@keyframes upulse{0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,.5)}60%{box-shadow:0 0 0 14px rgba(59,130,246,0)}}</style>
+    <div style="width:20px;height:20px;background:#3B82F6;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(59,130,246,.5);animation:upulse 2s ease-out infinite;"></div>
+  `;
+  return el;
+};
+
 export const MapLibre: React.FC = () => {
   const { activeRide } = useApp();
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef       = useRef<maplibregl.Map | null>(null);
-  const carRef       = useRef<maplibregl.Marker | null>(null);
-  const pickupRef    = useRef<maplibregl.Marker | null>(null);
-  const destRef      = useRef<maplibregl.Marker | null>(null);
-  const rafRef       = useRef<number | null>(null);
-  const t0Ref        = useRef<number>(0);
+  const containerRef  = useRef<HTMLDivElement>(null);
+  const mapRef        = useRef<maplibregl.Map | null>(null);
+  const carRef        = useRef<maplibregl.Marker | null>(null);
+  const pickupRef     = useRef<maplibregl.Marker | null>(null);
+  const destRef       = useRef<maplibregl.Marker | null>(null);
+  const rafRef        = useRef<number | null>(null);
+  const t0Ref         = useRef<number>(0);
+  const userDotRef    = useRef<maplibregl.Marker | null>(null);
+  const userPosRef    = useRef<[number, number] | null>(null);
+  const watchIdRef    = useRef<number | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
 
-  // One-time map init
+  // One-time map init + GPS watch
   useEffect(() => {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
@@ -111,8 +125,32 @@ export const MapLibre: React.FC = () => {
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     mapRef.current = map;
+
+    // Start GPS watch
+    if ('geolocation' in navigator) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const coords: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+          userPosRef.current = coords;
+          setGpsError(null);
+          if (!userDotRef.current) {
+            userDotRef.current = new maplibregl.Marker({ element: makeUserDotEl(), anchor: 'center' })
+              .setLngLat(coords)
+              .addTo(map);
+          } else {
+            userDotRef.current.setLngLat(coords);
+          }
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) setGpsError('denied');
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      );
+    }
+
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
       map.remove();
     };
   }, []);
@@ -249,14 +287,27 @@ export const MapLibre: React.FC = () => {
 
       {/* Locate-me button */}
       <button
-        onClick={() => mapRef.current?.easeTo({ center: [101.6869, 3.139], zoom: 15, duration: 600 })}
+        onClick={() => {
+          if (userPosRef.current) {
+            mapRef.current?.easeTo({ center: userPosRef.current, zoom: 16, duration: 600 });
+          } else {
+            mapRef.current?.easeTo({ center: [101.6869, 3.139], zoom: 15, duration: 600 });
+          }
+        }}
         className="absolute bottom-12 right-3 z-10 w-9 h-9 bg-white rounded-lg shadow-md border border-slate-100 flex items-center justify-center text-slate-500 hover:text-primary transition"
-        title="Reset view"
+        title="Go to my location"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
         </svg>
       </button>
+
+      {/* GPS denied warning */}
+      {gpsError === 'denied' && (
+        <div className="absolute bottom-3 left-3 right-14 z-10 bg-white/90 backdrop-blur-sm border border-amber-200 text-amber-700 text-[10px] font-bold rounded-lg px-3 py-1.5">
+          Location access denied. Enable GPS in browser settings.
+        </div>
+      )}
     </div>
   );
 };
