@@ -44,7 +44,7 @@ export const Login: React.FC = () => {
           {/* Email */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-1">
-              Campus Email
+              Email Address
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">

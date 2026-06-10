@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ShieldAlert, User, ShieldCheck, Mail, Lock, ArrowRight } from 'lucide-react';
+import { ShieldAlert, User, Mail, Lock, ArrowRight } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const { register, setCurrentPage } = useApp();
   const [name, setName] = useState('');
-  const [matricNo, setMatricNo] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -14,7 +13,7 @@ export const Register: React.FC = () => {
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!name || !matricNo || !email || !password || !confirmPassword) {
+    if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields.');
       return;
     }
@@ -29,7 +28,7 @@ export const Register: React.FC = () => {
 
     setLoading(true);
     setError('');
-    const { error: authError } = await register(name, matricNo, email, password);
+    const { error: authError } = await register(name, '', email, password);
     setLoading(false);
     if (authError) setError(authError);
   };
@@ -73,30 +72,10 @@ export const Register: React.FC = () => {
             </div>
           </div>
 
-          {/* Matric ID */}
+          {/* Email */}
           <div className="flex flex-col gap-1">
             <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider pl-1">
-              Matric ID
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                <ShieldCheck className="w-3.5 h-3.5" />
-              </span>
-              <input
-                type="text"
-                value={matricNo}
-                onChange={(e) => setMatricNo(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition uppercase"
-                placeholder="e.g. WIF210045"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Campus Email */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider pl-1">
-              Campus Email
+              Email Address
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -171,7 +150,7 @@ export const Register: React.FC = () => {
               <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
             ) : (
               <>
-                Register & Claim RM10
+                Register Account
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}
