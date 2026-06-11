@@ -56,7 +56,7 @@ export const Login: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
-                placeholder="e.g. name@student.um.edu.my"
+                placeholder="smartcampus@gmail.com"
                 required
               />
             </div>
