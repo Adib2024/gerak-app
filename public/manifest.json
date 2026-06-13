@@ -1,24 +1,51 @@
 {
-  "short_name": "GERAK",
-  "name": "GERAK — Smart Campus Service Platform",
-  "description": "Smart campus transportation, robe booking, and food delivery system.",
+  "id": "/",
+  "short_name": "Gerak",
+  "name": "Gerak — Smart Campus",
+  "description": "Campus transport, jubah delivery and car rental for UMPSA students.",
   "icons": [
+    {
+      "src": "gerak-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
     {
       "src": "icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     },
     {
       "src": "icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
     }
   ],
   "start_url": "/",
+  "scope": "/",
   "background_color": "#ffffff",
   "theme_color": "#EF4444",
   "display": "standalone",
-  "orientation": "portrait",
-  "categories": ["utilities", "productivity", "food"]
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "lang": "ms-MY",
+  "categories": ["utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Book a Ride",
+      "short_name": "Ride",
+      "description": "Book campus shuttle transport",
+      "url": "/",
+      "icons": [{ "src": "gerak-icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Jubah Delivery",
+      "short_name": "Jubah",
+      "description": "Convocation robe booking",
+      "url": "/",
+      "icons": [{ "src": "gerak-icon.svg", "sizes": "any" }]
+    }
+  ]
 }

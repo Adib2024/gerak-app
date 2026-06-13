@@ -1,0 +1,1628 @@
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
+import {
+  BarChart3, Car, Users, Clock, CheckCircle2,
+  AlertCircle, RefreshCw, Trash2, MapPin, Navigation,
+  UserPlus, Mail, X, Send, ChevronDown, ChevronUp, Megaphone, Plus, ToggleLeft, ToggleRight,
+  FileImage, ShieldCheck, ShieldOff, ExternalLink, KeyRound,
+  CalendarDays, Upload, Eye,
+} from 'lucide-react';
+
+interface RideOrder {
+  id: string;
+  customer_name: string;
+  campus: string;
+  date: string;
+  time: string;
+  pickup: string;
+  destination: string;
+  passengers: number;
+  contact: string;
+  fare: string;
+  night_charge: number;
+  notes: string;
+  status: string;
+  driver_id: string | null;
+  driver_name: string | null;
+  driver_contact: string | null;
+  created_at: string;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  pending:     'bg-amber-50 text-amber-700 border-amber-200',
+  accepted:    'bg-blue-50 text-blue-700 border-blue-200',
+  in_progress: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  completed:   'bg-emerald-50 text-emerald-600 border-emerald-200',
+  cancelled:   'bg-red-50 text-red-500 border-red-200',
+};
+
+type FilterStatus = 'all' | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+type AdminTab = 'orders' | 'drivers' | 'users' | 'banners' | 'receipts' | 'calendar';
+
+interface Announcement {
+  id: string;
+  tag: string;
+  title: string;
+  subtitle: string;
+  cta_label: string;
+  cta_page: string;
+  emoji: string;
+  gradient: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+const GRADIENTS = [
+  { label: 'Green',  value: 'from-emerald-700 via-emerald-600 to-teal-500' },
+  { label: 'Blue',   value: 'from-blue-700 via-blue-600 to-indigo-500' },
+  { label: 'Orange', value: 'from-amber-500 via-orange-500 to-red-500' },
+  { label: 'Purple', value: 'from-violet-600 via-purple-600 to-fuchsia-500' },
+  { label: 'Navy',   value: 'from-slate-800 via-slate-700 to-slate-600' },
+  { label: 'Pink',   value: 'from-pink-600 via-rose-500 to-red-400' },
+];
+
+const CTA_PAGES = [
+  { label: 'Home',    value: 'dashboard' },
+  { label: 'Ride',    value: 'transport' },
+  { label: 'Jubah',   value: 'jubah' },
+  { label: 'Profile', value: 'profile' },
+];
+
+interface ProfileUser {
+  id: string;
+  name: string;
+  gerak_id: string;
+  role: string;
+  campus: string;
+  email: string;
+  status: string;
+  phone: string;
+  can_drive?: boolean;
+  can_rent?: boolean;
+}
+
+interface DriverInvite {
+  id: string;
+  email: string;
+  campus: string;
+  can_drive: boolean;
+  can_rent: boolean;
+  used: boolean;
+  used_at: string | null;
+  created_at: string;
+}
+
+interface DriverReceipt {
+  id: string;
+  name: string;
+  gerak_id: string;
+  campus: string;
+  email: string;
+  phone: string;
+  fee_receipt_url: string;
+  fee_receipt_verified: boolean;
+  fee_receipt_amount: string;
+  fee_receipt_date: string;
+  fee_receipt_expiry: string | null;
+  fee_receipt_reject_reason: string;
+}
+
+// ── Shared user card ────────────────────────────────────────────────────────
+const UserCard: React.FC<{
+  u: ProfileUser;
+  canManage: boolean;
+  togglingStatus: string | null;
+  terminating: string | null;
+  togglingCap?: string | null;
+  togglingCampus?: string | null;
+  onToggle: (u: ProfileUser) => void;
+  onTerminate: (u: ProfileUser) => void;
+  onCapToggle?: (u: ProfileUser, canDrive: boolean, canRent: boolean) => void;
+  onCampusChange?: (u: ProfileUser, campus: 'Pekan' | 'Gambang') => void;
+  roleStyle: Record<string, string>;
+}> = ({ u, canManage, togglingStatus, terminating, togglingCap, togglingCampus, onToggle, onTerminate, onCapToggle, onCampusChange, roleStyle }) => (
+  <div className={`rounded-2xl border p-4 flex flex-col gap-2.5 ${
+    u.status === 'inactive' ? 'bg-red-50/50 border-red-100' : 'bg-white border-slate-100'
+  }`}>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-xs font-black text-slate-800 truncate">{u.name}</p>
+        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full border uppercase shrink-0 ${roleStyle[u.role] ?? roleStyle.customer}`}>
+          {u.role}
+        </span>
+        {u.status === 'inactive' && (
+          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200 uppercase shrink-0">
+            Suspended
+          </span>
+        )}
+      </div>
+      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{u.gerak_id} · UMPSA {u.campus}</p>
+      <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
+    </div>
+
+    {/* Capability toggles — drivers only */}
+    {u.role === 'driver' && onCapToggle && (
+      <div className="flex gap-2">
+        <button
+          onClick={() => onCapToggle(u, !u.can_drive, u.can_rent ?? false)}
+          disabled={togglingCap === u.id}
+          className={`flex-1 flex items-center justify-center gap-1.5 font-extrabold text-[10px] py-2 rounded-xl border transition active:scale-95 disabled:opacity-40 ${
+            u.can_drive
+              ? 'bg-primary/10 border-primary/30 text-primary'
+              : 'bg-slate-50 border-slate-200 text-slate-400'
+          }`}
+        >
+          {togglingCap === u.id
+            ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+            : <><Car className="w-3 h-3" /> {u.can_drive ? 'Car ✓' : 'Car ✗'}</>}
+        </button>
+        <button
+          onClick={() => onCapToggle(u, u.can_drive ?? false, !u.can_rent)}
+          disabled={togglingCap === u.id}
+          className={`flex-1 flex items-center justify-center gap-1.5 font-extrabold text-[10px] py-2 rounded-xl border transition active:scale-95 disabled:opacity-40 ${
+            u.can_rent
+              ? 'bg-amber-50 border-amber-200 text-amber-700'
+              : 'bg-slate-50 border-slate-200 text-slate-400'
+          }`}
+        >
+          {togglingCap === u.id
+            ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+            : <><KeyRound className="w-3 h-3" /> {u.can_rent ? 'Rental ✓' : 'Rental ✗'}</>}
+        </button>
+      </div>
+    )}
+
+    {/* Campus toggle — drivers only, superadmin only */}
+    {u.role === 'driver' && onCampusChange && (
+      <div className="flex gap-2">
+        {(['Gambang', 'Pekan'] as const).map(c => (
+          <button key={c}
+            onClick={() => u.campus !== c && onCampusChange(u, c)}
+            disabled={togglingCampus === u.id}
+            className={`flex-1 font-extrabold text-[10px] py-2 rounded-xl border transition active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1 ${
+              u.campus === c
+                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                : 'bg-slate-50 border-slate-200 text-slate-400'
+            }`}
+          >
+            {togglingCampus === u.id && u.campus !== c
+              ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+              : <>{u.campus === c ? '📍' : ''} {c}</>}
+          </button>
+        ))}
+      </div>
+    )}
+
+    {canManage && (
+      <div className="flex gap-2">
+        <button
+          onClick={() => onToggle(u)}
+          disabled={togglingStatus === u.id}
+          className={`flex-1 font-extrabold text-[10px] py-2 rounded-xl transition active:scale-95 disabled:opacity-50 flex items-center justify-center ${
+            u.status === 'active'
+              ? 'bg-amber-50 border border-amber-200 text-amber-700'
+              : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+          }`}
+        >
+          {togglingStatus === u.id
+            ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+            : u.status === 'active' ? 'Stop' : 'Reactivate'}
+        </button>
+        <button
+          onClick={() => onTerminate(u)}
+          disabled={terminating === u.id}
+          className="flex-1 bg-red-50 border border-red-200 text-red-600 font-extrabold text-[10px] py-2 rounded-xl transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1"
+        >
+          {terminating === u.id
+            ? <span className="w-3 h-3 rounded-full border border-red-400 border-t-transparent animate-spin" />
+            : <><Trash2 className="w-3 h-3" /> Terminate</>}
+        </button>
+      </div>
+    )}
+  </div>
+);
+
+export const AdminHome: React.FC = () => {
+  const { user, setCurrentPage } = useApp();
+
+  const [activeTab, setActiveTab] = useState<AdminTab>('orders');
+  const [campusView, setCampusView] = useState<'Pekan' | 'Gambang'>('Gambang');
+
+  const [orders, setOrders] = useState<RideOrder[]>([]);
+  const [filter, setFilter] = useState<FilterStatus>('all');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
+
+  // Driver invites state
+  const [invites, setInvites]               = useState<DriverInvite[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [inviteEmail, setInviteEmail]       = useState('');
+  const [inviteCampus, setInviteCampus]     = useState<'Pekan' | 'Gambang'>('Gambang');
+  const [inviteCanDrive, setInviteCanDrive] = useState(true);
+  const [inviteCanRent,  setInviteCanRent]  = useState(false);
+  const [inviteSending, setInviteSending]   = useState(false);
+  const [togglingCap, setTogglingCap]         = useState<string | null>(null);
+  const [togglingCampus, setTogglingCampus]   = useState<string | null>(null);
+  const [showInviteConfirm, setShowInviteConfirm] = useState(false);
+
+  // Users management state
+  const [profileUsers, setProfileUsers]     = useState<ProfileUser[]>([]);
+  const [usersLoading, setUsersLoading]     = useState(false);
+  const [terminating, setTerminating]       = useState<string | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
+  const [searchGerakId, setSearchGerakId]   = useState('');
+  const [searchResult, setSearchResult]     = useState<ProfileUser | null | 'not_found'>(null);
+  const [searching, setSearching]           = useState(false);
+
+  // Banners state
+  const [announcements, setAnnouncements]       = useState<Announcement[]>([]);
+  const [bannersLoading, setBannersLoading]     = useState(false);
+  const [showBannerForm, setShowBannerForm]     = useState(false);
+  const [savingBanner, setSavingBanner]         = useState(false);
+  const [bannerTag, setBannerTag]               = useState('📢 Announcement');
+  const [bannerTitle, setBannerTitle]           = useState('');
+  const [bannerSubtitle, setBannerSubtitle]     = useState('');
+  const [bannerCtaLabel, setBannerCtaLabel]     = useState('Learn More');
+  const [bannerCtaPage, setBannerCtaPage]       = useState('dashboard');
+  const [bannerEmoji, setBannerEmoji]           = useState('📣');
+  const [bannerGradient, setBannerGradient]     = useState(GRADIENTS[0].value);
+
+  // Receipts state
+  const [driverReceipts, setDriverReceipts]       = useState<DriverReceipt[]>([]);
+  const [receiptsLoading, setReceiptsLoading]     = useState(false);
+  const [receiptFilter, setReceiptFilter]         = useState<'all' | 'verified' | 'pending' | 'rejected' | 'expired'>('all');
+  const [approvingReceipt, setApprovingReceipt]   = useState<string | null>(null);
+  const [rejectingReceipt, setRejectingReceipt]   = useState<string | null>(null);
+
+  // Calendar state
+  const calUploadRef                              = useRef<HTMLInputElement>(null);
+  const [calParsing, setCalParsing]               = useState(false);
+  const [calParsed, setCalParsed]                 = useState<any>(null);
+  const [calSaving, setCalSaving]                 = useState(false);
+  const [calActiveYear, setCalActiveYear]         = useState<string | null>(null);
+  const [calPreviewSem, setCalPreviewSem]         = useState(0);
+
+  const loadActiveCalendar = useCallback(async () => {
+    const { data } = await supabase
+      .from('academic_calendars')
+      .select('academic_year')
+      .eq('is_active', true)
+      .eq('university', 'UMPSA')
+      .order('uploaded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setCalActiveYear(data?.academic_year ?? null);
+  }, []);
+
+  useEffect(() => { if (activeTab === 'calendar') loadActiveCalendar(); }, [activeTab, loadActiveCalendar]);
+
+  const handleCalendarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setCalParsing(true);
+    setCalParsed(null);
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+      const { data, error } = await supabase.functions.invoke('parse-calendar', { body: formData });
+      if (error) throw error;
+      setCalParsed(data);
+      setCalPreviewSem(0);
+    } catch (err) {
+      showToast('Failed to parse PDF. Please try again.');
+    } finally {
+      setCalParsing(false);
+    }
+  };
+
+  const handleCalendarSave = async () => {
+    if (!calParsed) return;
+    setCalSaving(true);
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      await supabase.from('academic_calendars')
+        .update({ is_active: false })
+        .eq('university', 'UMPSA')
+        .eq('academic_year', calParsed.academic_year);
+      const { error } = await supabase.from('academic_calendars').insert({
+        academic_year: calParsed.academic_year,
+        university: 'UMPSA',
+        semesters: calParsed.semesters,
+        holidays: calParsed.holidays ?? [],
+        uploaded_by: authUser?.id,
+        is_active: true,
+      });
+      if (error) throw error;
+      showToast(`Calendar ${calParsed.academic_year} saved & activated!`);
+      setCalParsed(null);
+      setCalActiveYear(calParsed.academic_year);
+    } catch {
+      showToast('Failed to save calendar.');
+    } finally {
+      setCalSaving(false);
+    }
+  };
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  };
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target as Node)) {
+        setShowFilterDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    const q = supabase
+      .from('ride_orders')
+      .select('*')
+      .eq('campus', campusView)
+      .order('created_at', { ascending: false });
+
+    const { data } = await q;
+    setOrders(data ?? []);
+    setLoading(false);
+  }, [campusView]);
+
+  useEffect(() => {
+    loadOrders();
+    const channel = supabase
+      .channel('ride_orders_admin')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ride_orders' }, loadOrders)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadOrders]);
+
+  const handleDelete = async (orderId: string) => {
+    setDeleting(orderId);
+    const { error } = await supabase.from('ride_orders').delete().eq('id', orderId);
+    setDeleting(null);
+    if (error) showToast('Delete failed: ' + error.message);
+    else { showToast('Order removed.'); loadOrders(); }
+  };
+
+  const handleForceStatus = async (orderId: string, status: string) => {
+    await supabase.rpc('update_ride_status', { p_order_id: orderId, p_status: status });
+    loadOrders();
+  };
+
+  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
+
+
+  // ── Driver invite helpers ───────────────────────────────────────────────
+  const loadInvites = useCallback(async () => {
+    setInvitesLoading(true);
+    const { data } = await supabase
+      .from('driver_invites')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setInvites(data ?? []);
+    setInvitesLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'drivers') loadInvites();
+  }, [activeTab, loadInvites]);
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    if (!inviteCanDrive && !inviteCanRent) { showToast('Select at least one capability.'); return; }
+    setInviteSending(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('driver_invites').insert({
+      email:      inviteEmail.trim().toLowerCase(),
+      campus:     inviteCampus,
+      can_drive:  inviteCanDrive,
+      can_rent:   inviteCanRent,
+      created_by: authUser?.id,
+    });
+    setInviteSending(false);
+    if (error) showToast(error.message.includes('unique') ? 'This email already has a pending invite.' : error.message);
+    else { showToast('Invite added!'); setInviteEmail(''); setInviteCanDrive(true); setInviteCanRent(false); loadInvites(); }
+  };
+
+  const handleRevokeInvite = async (id: string) => {
+    const { error } = await supabase.from('driver_invites').delete().eq('id', id);
+    if (error) { showToast('Delete failed: ' + error.message); return; }
+    showToast('Invite removed.');
+    loadInvites();
+  };
+
+  // ── Users management helpers ────────────────────────────────────────────────
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
+    const { data } = await supabase.rpc('get_all_profiles');
+    // Enrich drivers with capability flags from profiles table
+    const users = (data as ProfileUser[]) ?? [];
+    const driverIds = users.filter(u => u.role === 'driver').map(u => u.id);
+    if (driverIds.length > 0) {
+      const { data: caps } = await supabase
+        .from('profiles').select('id, can_drive, can_rent').in('id', driverIds);
+      if (caps) {
+        caps.forEach(c => {
+          const u = users.find(u => u.id === c.id);
+          if (u) { u.can_drive = c.can_drive; u.can_rent = c.can_rent; }
+        });
+      }
+    }
+    setProfileUsers(users);
+    setUsersLoading(false);
+  }, []);
+
+  const handleToggleCapability = async (u: ProfileUser, canDrive: boolean, canRent: boolean) => {
+    setTogglingCap(u.id);
+    const { error } = await supabase.rpc('set_driver_capabilities', {
+      p_user_id:  u.id,
+      p_can_drive: canDrive,
+      p_can_rent:  canRent,
+    });
+    setTogglingCap(null);
+    if (error) showToast('Failed to update capabilities.');
+    else {
+      showToast(`${u.name}: ${canDrive ? 'Car ✓' : 'Car ✗'} · ${canRent ? 'Rental ✓' : 'Rental ✗'}`);
+      loadUsers();
+    }
+  };
+
+  const handleChangeCampus = async (u: ProfileUser, campus: 'Pekan' | 'Gambang') => {
+    setTogglingCampus(u.id);
+    const { error } = await supabase.rpc('set_driver_campus', {
+      p_user_id: u.id,
+      p_campus:  campus,
+    });
+    setTogglingCampus(null);
+    if (error) showToast('Failed to update campus.');
+    else { showToast(`${u.name} moved to UMPSA ${campus}.`); loadUsers(); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users') loadUsers();
+  }, [activeTab, loadUsers]);
+
+  const canManage = (targetRole: string, targetId: string) => {
+    if (targetId === (supabase.auth as any)._currentUser?.id) return false;
+    if (user.role === 'superadmin') return true;
+    if (user.role === 'admin') return !['admin', 'superadmin'].includes(targetRole);
+    return false;
+  };
+
+  const handleSearchGerakId = async () => {
+    if (!searchGerakId.trim()) return;
+    setSearching(true);
+    setSearchResult(null);
+    const { data } = await supabase.rpc('search_profile_by_gerak_id', { p_gerak_id: searchGerakId.trim() });
+    setSearching(false);
+    const results = data as ProfileUser[] | null;
+    setSearchResult(results && results.length > 0 ? results[0] : 'not_found');
+  };
+
+  const handleToggleStatus = async (u: ProfileUser) => {
+    setTogglingStatus(u.id);
+    const newStatus = u.status === 'active' ? 'inactive' : 'active';
+    const { data } = await supabase.rpc('set_user_status', { p_user_id: u.id, p_status: newStatus });
+    setTogglingStatus(null);
+    if (data?.success === false) showToast(data.error ?? 'Failed');
+    else { showToast(newStatus === 'inactive' ? `${u.name} suspended.` : `${u.name} reactivated.`); loadUsers(); }
+  };
+
+  const handleTerminate = async (u: ProfileUser) => {
+    if (!confirm(`Permanently terminate ${u.name} (${u.gerak_id})? This cannot be undone.`)) return;
+    setTerminating(u.id);
+    const { data } = await supabase.rpc('terminate_user', { p_user_id: u.id });
+    setTerminating(null);
+    if (data?.success === false) showToast(data.error ?? 'Failed');
+    else { showToast(`${u.name} has been terminated.`); loadUsers(); }
+  };
+
+  // ── Banner helpers ───────────────────────────────────────────────────────────
+  const loadAnnouncements = useCallback(async () => {
+    setBannersLoading(true);
+    const { data } = await supabase.from('announcements').select('*').order('sort_order').order('created_at', { ascending: false });
+    setAnnouncements(data ?? []);
+    setBannersLoading(false);
+  }, []);
+
+  useEffect(() => { if (activeTab === 'banners') loadAnnouncements(); }, [activeTab, loadAnnouncements]);
+
+  const resetBannerForm = () => {
+    setBannerTag('📢 Announcement'); setBannerTitle(''); setBannerSubtitle('');
+    setBannerCtaLabel('Learn More'); setBannerCtaPage('dashboard');
+    setBannerEmoji('📣'); setBannerGradient(GRADIENTS[0].value);
+    setShowBannerForm(false);
+  };
+
+  const handleSaveBanner = async () => {
+    if (!bannerTitle.trim()) { showToast('Title is required.'); return; }
+    setSavingBanner(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('announcements').insert({
+      tag: bannerTag.trim(), title: bannerTitle.trim(), subtitle: bannerSubtitle.trim(),
+      cta_label: bannerCtaLabel.trim(), cta_page: bannerCtaPage,
+      emoji: bannerEmoji.trim(), gradient: bannerGradient,
+      is_active: true, created_by: authUser?.id,
+    });
+    setSavingBanner(false);
+    if (error) showToast(error.message);
+    else { showToast('Banner published!'); resetBannerForm(); loadAnnouncements(); }
+  };
+
+  const handleToggleBanner = async (a: Announcement) => {
+    await supabase.from('announcements').update({ is_active: !a.is_active }).eq('id', a.id);
+    loadAnnouncements();
+  };
+
+  const handleDeleteBanner = async (id: string) => {
+    if (!window.confirm('Delete this banner?')) return;
+    await supabase.from('announcements').delete().eq('id', id);
+    showToast('Banner deleted.'); loadAnnouncements();
+  };
+
+  // ── Receipt review helpers ───────────────────────────────────────────────
+  const loadReceipts = useCallback(async () => {
+    setReceiptsLoading(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, name, gerak_id, campus, email, phone, fee_receipt_url, fee_receipt_verified, fee_receipt_amount, fee_receipt_date, fee_receipt_expiry, fee_receipt_reject_reason')
+      .eq('role', 'driver')
+      .order('name');
+    setDriverReceipts((data as DriverReceipt[]) ?? []);
+    setReceiptsLoading(false);
+  }, []);
+
+  useEffect(() => { if (activeTab === 'receipts') loadReceipts(); }, [activeTab, loadReceipts]);
+
+  const receiptStatus = (r: DriverReceipt): 'verified' | 'expired' | 'rejected' | 'pending' => {
+    if (!r.fee_receipt_url) return 'pending';
+    if (r.fee_receipt_verified && r.fee_receipt_expiry && new Date(r.fee_receipt_expiry) <= new Date()) return 'expired';
+    if (r.fee_receipt_verified) return 'verified';
+    if (r.fee_receipt_reject_reason) return 'rejected';
+    return 'pending';
+  };
+
+  const filteredReceipts = receiptFilter === 'all'
+    ? driverReceipts
+    : driverReceipts.filter(r => receiptStatus(r) === receiptFilter);
+
+  const handleApproveReceipt = async (r: DriverReceipt) => {
+    setApprovingReceipt(r.id);
+    const { data } = await supabase.rpc('approve_driver_receipt', { p_user_id: r.id });
+    setApprovingReceipt(null);
+    if (data?.success === false) showToast(data.error ?? 'Failed to approve.');
+    else { showToast(`${r.name} approved — active until end of month.`); loadReceipts(); }
+  };
+
+  const handleRejectReceipt = async (r: DriverReceipt) => {
+    const reason = window.prompt(
+      `Rejection reason for ${r.name}:`,
+      'Receipt does not meet requirements. Please re-upload a valid RM25.00 bank transfer receipt paid on the 1st–3rd of the month.'
+    );
+    if (reason === null) return;
+    setRejectingReceipt(r.id);
+    const { data } = await supabase.rpc('reject_driver_receipt', {
+      p_user_id: r.id,
+      p_reason:  reason.trim() || 'Receipt rejected by admin.',
+    });
+    setRejectingReceipt(null);
+    if (data?.success === false) showToast(data.error ?? 'Failed to reject.');
+    else { showToast(`${r.name}'s receipt rejected.`); loadReceipts(); }
+  };
+
+  const RECEIPT_STATUS_STYLE = {
+    verified: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    expired:  'bg-red-50 text-red-600 border-red-200',
+    rejected: 'bg-orange-50 text-orange-600 border-orange-200',
+    pending:  'bg-amber-50 text-amber-700 border-amber-200',
+  };
+
+  const ROLE_STYLE: Record<string, string> = {
+    superadmin: 'bg-purple-50 text-purple-700 border-purple-200',
+    admin:      'bg-blue-50 text-blue-700 border-blue-200',
+    driver:     'bg-emerald-50 text-emerald-700 border-emerald-200',
+    customer:   'bg-slate-50 text-slate-500 border-slate-200',
+  };
+
+  // Guard — redirect non-admin users
+  if (!['admin', 'superadmin'].includes(user.role)) {
+    setCurrentPage('dashboard');
+    return null;
+  }
+
+  return (
+    <>
+    <div className="flex-grow bg-slate-50/50 overflow-y-auto no-scrollbar pb-6 px-4 animate-fade-in flex flex-col gap-4">
+
+      {/* Header */}
+      <div className="mt-4 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-black text-slate-800 m-0">Admin Panel</h2>
+            <span className="bg-primary/10 text-primary text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              {user.role}
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{user.name} · {user.gerakId}</p>
+        </div>
+        <button
+          onClick={() => activeTab === 'orders' ? loadOrders() : activeTab === 'drivers' ? loadInvites() : activeTab === 'users' ? loadUsers() : activeTab === 'receipts' ? loadReceipts() : loadAnnouncements()}
+          className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-primary transition active:scale-90"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-16 left-4 right-4 z-50 bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg text-center animate-fade-in">
+          {toast}
+        </div>
+      )}
+
+      {/* Tab switcher */}
+      <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm flex-wrap">
+        {([
+          { id: 'orders',   label: 'Orders',    icon: BarChart3,  superadminOnly: false },
+          { id: 'drivers',  label: 'Drivers',   icon: Car,        superadminOnly: false },
+          { id: 'users',    label: 'Users',     icon: Users,      superadminOnly: false },
+          { id: 'banners',  label: 'Banners',   icon: Megaphone,     superadminOnly: false },
+          { id: 'receipts', label: 'Receipts',  icon: FileImage,     superadminOnly: true  },
+          { id: 'calendar', label: 'Calendar',  icon: CalendarDays,  superadminOnly: false },
+        ] as { id: AdminTab; label: string; icon: React.ElementType; superadminOnly: boolean }[])
+          .filter(t => !t.superadminOnly || user.role === 'superadmin')
+          .map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
+                activeTab === tab.id ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              <tab.icon className="w-3.5 h-3.5" /> {tab.label}
+            </button>
+          ))}
+      </div>
+
+      {/* ── DRIVERS TAB ── */}
+      {activeTab === 'drivers' && (
+        <div className="flex flex-col gap-4">
+          {/* Invite form */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-primary" /> Invite Driver
+            </h3>
+
+            {/* Campus picker */}
+            <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
+              {(['Gambang', 'Pekan'] as const).map(c => (
+                <button key={c} type="button" onClick={() => setInviteCampus(c)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
+                    inviteCampus === c ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {/* Email input */}
+            <div className="relative">
+              <Mail className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="email"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && inviteEmail.trim() && setShowInviteConfirm(true)}
+                placeholder="driver@email.com"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+              />
+            </div>
+
+            {/* Capability toggles */}
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Capabilities</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setInviteCanDrive(v => !v)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-extrabold border transition active:scale-95 ${
+                    inviteCanDrive
+                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}>
+                  <Car className="w-3 h-3" /> Gerak Car {inviteCanDrive ? '✓' : '✗'}
+                </button>
+                <button type="button" onClick={() => setInviteCanRent(v => !v)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-extrabold border transition active:scale-95 ${
+                    inviteCanRent
+                      ? 'bg-amber-50 border-amber-200 text-amber-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-400'
+                  }`}>
+                  <KeyRound className="w-3 h-3" /> Rental {inviteCanRent ? '✓' : '✗'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                if (!inviteEmail.trim()) return;
+                if (!inviteCanDrive && !inviteCanRent) { showToast('Select at least one capability.'); return; }
+                setShowInviteConfirm(true);
+              }}
+              disabled={!inviteEmail.trim()}
+              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white font-extrabold text-xs py-2.5 rounded-xl transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-primary/20"
+            >
+              <Send className="w-3.5 h-3.5" /> Add Invite
+            </button>
+          </div>
+
+          {/* Invite list */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <Mail className="w-4 h-4" /> Invite List
+            </h3>
+
+            {invitesLoading ? (
+              <div className="flex justify-center py-6">
+                <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
+              </div>
+            ) : invites.length === 0 ? (
+              <p className="text-xs text-slate-400 font-semibold text-center py-4">No invites yet</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {invites.map(inv => (
+                  <div key={inv.id} className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl border ${
+                    inv.used ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-100'
+                  }`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-700 truncate">{inv.email}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-[9px] font-extrabold text-slate-400 uppercase">{inv.campus}</span>
+                        {inv.used
+                          ? <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full">Registered</span>
+                          : <span className="text-[9px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">Pending</span>}
+                        {inv.can_drive && (
+                          <span className="text-[9px] font-extrabold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                            <Car className="w-2.5 h-2.5" /> Car
+                          </span>
+                        )}
+                        {inv.can_rent && (
+                          <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                            <KeyRound className="w-2.5 h-2.5" /> Rental
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {!inv.used && (
+                      <button
+                        onClick={() => handleRevokeInvite(inv.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-xl bg-red-50 border border-red-100 text-red-400 hover:text-red-600 transition active:scale-90 shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── USERS TAB ── */}
+      {activeTab === 'users' && (
+        <div className="flex flex-col gap-3">
+
+          {/* Customer search */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <AlertCircle className="w-4 h-4" /> Find Customer
+            </h3>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={searchGerakId}
+                onChange={e => { setSearchGerakId(e.target.value.toUpperCase()); setSearchResult(null); }}
+                onKeyDown={e => e.key === 'Enter' && handleSearchGerakId()}
+                placeholder="e.g. GP00001"
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary transition uppercase placeholder:normal-case placeholder:font-normal"
+              />
+              <button
+                onClick={handleSearchGerakId}
+                disabled={searching || !searchGerakId.trim()}
+                className="px-4 bg-primary text-white font-extrabold text-xs rounded-xl transition active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {searching
+                  ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  : 'Search'}
+              </button>
+            </div>
+
+            {/* Search result */}
+            {searchResult === 'not_found' && (
+              <p className="text-xs text-slate-400 font-semibold text-center py-2">No customer found with that Gerak ID.</p>
+            )}
+            {searchResult && searchResult !== 'not_found' && (
+              <UserCard u={searchResult} canManage={canManage(searchResult.role, searchResult.id)}
+                togglingStatus={togglingStatus} terminating={terminating}
+                togglingCap={togglingCap} togglingCampus={togglingCampus}
+                onToggle={handleToggleStatus} onTerminate={handleTerminate}
+                onCapToggle={user.role === 'superadmin' ? handleToggleCapability : undefined}
+                onCampusChange={user.role === 'superadmin' ? handleChangeCampus : undefined}
+                roleStyle={ROLE_STYLE} />
+            )}
+          </div>
+
+          {/* Admins & Drivers list */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <Users className="w-4 h-4" /> Admins &amp; Drivers
+            </h3>
+
+            {usersLoading ? (
+              <div className="flex justify-center py-8">
+                <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
+              </div>
+            ) : profileUsers.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No staff accounts found</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {profileUsers.map(u => (
+                  <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
+                    togglingStatus={togglingStatus} terminating={terminating}
+                    togglingCap={togglingCap} togglingCampus={togglingCampus}
+                    onToggle={handleToggleStatus} onTerminate={handleTerminate}
+                    onCapToggle={user.role === 'superadmin' ? handleToggleCapability : undefined}
+                    onCampusChange={user.role === 'superadmin' ? handleChangeCampus : undefined}
+                    roleStyle={ROLE_STYLE} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── BANNERS TAB ── */}
+      {activeTab === 'banners' && (
+        <div className="flex flex-col gap-4">
+
+          {/* New Banner button */}
+          {!showBannerForm && (
+            <button
+              onClick={() => setShowBannerForm(true)}
+              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white font-extrabold text-xs py-3 rounded-2xl transition active:scale-95 shadow-md shadow-primary/20"
+            >
+              <Plus className="w-4 h-4" /> New Banner
+            </button>
+          )}
+
+          {/* Banner form */}
+          {showBannerForm && (
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Megaphone className="w-4 h-4 text-primary" /> New Announcement
+              </h3>
+
+              {/* Tag */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Tag (e.g. 🚗 Ride)</label>
+                <input
+                  type="text"
+                  value={bannerTag}
+                  onChange={e => setBannerTag(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                />
+              </div>
+
+              {/* Title */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Title <span className="text-red-400">*</span></label>
+                <input
+                  type="text"
+                  value={bannerTitle}
+                  onChange={e => setBannerTitle(e.target.value)}
+                  placeholder="e.g. Gerak Car is Now Available"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                />
+              </div>
+
+              {/* Subtitle */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Subtitle</label>
+                <textarea
+                  value={bannerSubtitle}
+                  onChange={e => setBannerSubtitle(e.target.value)}
+                  rows={2}
+                  placeholder="Short description shown in the banner..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-primary transition resize-none"
+                />
+              </div>
+
+              {/* CTA label + page row */}
+              <div className="flex gap-3">
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">CTA Label</label>
+                  <input
+                    type="text"
+                    value={bannerCtaLabel}
+                    onChange={e => setBannerCtaLabel(e.target.value)}
+                    placeholder="Learn More"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                  />
+                </div>
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">CTA Page</label>
+                  <select
+                    value={bannerCtaPage}
+                    onChange={e => setBannerCtaPage(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                  >
+                    {CTA_PAGES.map(p => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Emoji */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Decorative Emoji</label>
+                <input
+                  type="text"
+                  value={bannerEmoji}
+                  onChange={e => setBannerEmoji(e.target.value)}
+                  maxLength={4}
+                  className="w-20 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-center focus:outline-none focus:border-primary transition"
+                />
+              </div>
+
+              {/* Gradient picker */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">Banner Colour</label>
+                <div className="flex flex-wrap gap-2">
+                  {GRADIENTS.map(g => (
+                    <button
+                      key={g.value}
+                      type="button"
+                      onClick={() => setBannerGradient(g.value)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold text-white bg-gradient-to-r ${g.value} transition active:scale-95 ${
+                        bannerGradient === g.value ? 'ring-2 ring-offset-1 ring-slate-400' : ''
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview */}
+              {bannerTitle && (
+                <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${bannerGradient} p-4 text-white`} style={{ height: 100 }}>
+                  <div className="absolute -right-3 -top-3 text-6xl opacity-20 select-none pointer-events-none">{bannerEmoji}</div>
+                  <span className="self-start bg-white/20 border border-white/25 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wider">{bannerTag}</span>
+                  <h4 className="text-sm font-black leading-tight mt-1 m-0">{bannerTitle}</h4>
+                  {bannerSubtitle && <p className="text-[9px] text-white/80 font-medium leading-snug mt-0.5 line-clamp-2">{bannerSubtitle}</p>}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={resetBannerForm}
+                  className="flex-1 bg-slate-100 text-slate-600 font-extrabold text-xs py-2.5 rounded-xl transition active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveBanner}
+                  disabled={savingBanner || !bannerTitle.trim()}
+                  className="flex-1 bg-primary hover:bg-primary-hover text-white font-extrabold text-xs py-2.5 rounded-xl transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {savingBanner
+                    ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    : <><Megaphone className="w-3.5 h-3.5" /> Publish</>}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Announcements list */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <Megaphone className="w-4 h-4" /> All Banners
+            </h3>
+
+            {bannersLoading ? (
+              <div className="flex justify-center py-8">
+                <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
+              </div>
+            ) : announcements.length === 0 ? (
+              <p className="text-xs text-slate-400 font-semibold text-center py-6">No banners yet. Create one above.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {announcements.map(a => (
+                  <div key={a.id} className={`rounded-2xl border p-4 flex flex-col gap-2.5 ${a.is_active ? 'bg-white border-slate-100' : 'bg-slate-50 border-slate-200 opacity-60'}`}>
+
+                    {/* Preview strip */}
+                    <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${a.gradient} px-3 py-2 text-white flex items-center gap-2`}>
+                      <span className="text-xl">{a.emoji}</span>
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-extrabold opacity-70 truncate">{a.tag}</p>
+                        <p className="text-xs font-black truncate">{a.title}</p>
+                      </div>
+                    </div>
+
+                    {/* Meta */}
+                    <p className="text-[10px] text-slate-400 font-semibold line-clamp-2">{a.subtitle}</p>
+                    <p className="text-[9px] text-slate-300 font-semibold">
+                      CTA: {a.cta_label} → {a.cta_page} · {new Date(a.created_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleToggleBanner(a)}
+                        className={`flex-1 flex items-center justify-center gap-1.5 font-extrabold text-[10px] py-2 rounded-xl border transition active:scale-95 ${
+                          a.is_active
+                            ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                            : 'bg-slate-100 border-slate-200 text-slate-500'
+                        }`}
+                      >
+                        {a.is_active
+                          ? <><ToggleRight className="w-3.5 h-3.5" /> Active</>
+                          : <><ToggleLeft className="w-3.5 h-3.5" /> Inactive</>}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBanner(a.id)}
+                        className="px-3 bg-red-50 border border-red-100 text-red-400 hover:text-red-600 font-extrabold text-[10px] py-2 rounded-xl transition active:scale-95 flex items-center justify-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── ORDERS TAB ── */}
+      {activeTab === 'orders' && (
+        <div className="flex flex-col gap-4">
+      {/* Campus toggle */}
+      <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
+        {(['Gambang', 'Pekan'] as const).map(c => (
+          <button
+            key={c}
+            onClick={() => setCampusView(c)}
+            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
+              campusView === c
+                ? 'bg-primary text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* Filter dropdown */}
+      <div ref={filterDropdownRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setShowFilterDropdown(v => !v)}
+          className="w-full flex items-center justify-between bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-primary active:scale-[0.98]"
+        >
+          <span className="flex items-center gap-2">
+            <span className="text-slate-800 font-extrabold uppercase text-xs tracking-wide">
+              {filter.replace('_', ' ')}
+            </span>
+            {filter !== 'all' && orders.filter(o => o.status === filter).length > 0 && (
+              <span className="bg-primary/10 text-primary text-[9px] font-extrabold px-1.5 py-0.5 rounded-full">
+                {orders.filter(o => o.status === filter).length}
+              </span>
+            )}
+          </span>
+          {showFilterDropdown
+            ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
+            : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
+        </button>
+
+        {showFilterDropdown && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-2xl shadow-xl z-30 overflow-hidden">
+            <div className="max-h-48 overflow-y-auto">
+              {(['all', 'pending', 'accepted', 'in_progress', 'completed', 'cancelled'] as FilterStatus[]).map((f, i, arr) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => { setFilter(f); setShowFilterDropdown(false); }}
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition ${
+                    i < arr.length - 1 ? 'border-b border-slate-50' : ''
+                  } ${
+                    filter === f
+                      ? 'bg-primary/10 text-primary font-extrabold'
+                      : 'text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="uppercase text-xs tracking-wide">{f.replace('_', ' ')}</span>
+                  {f !== 'all' && orders.filter(o => o.status === f).length > 0 && (
+                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      filter === f ? 'bg-primary/20 text-primary' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {orders.filter(o => o.status === f).length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Orders list */}
+      <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-slate-400" />
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+            {filtered.length} Order{filtered.length !== 1 ? 's' : ''}
+          </h3>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <span className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-10 text-slate-400">
+            <Car className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p className="text-xs font-semibold">No orders yet</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filtered.map(order => (
+              <div key={order.id} className="border border-slate-100 rounded-2xl p-4 flex flex-col gap-2.5">
+                {/* Top row */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-black text-slate-800 truncate">{order.customer_name}</p>
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase shrink-0 ${STATUS_COLORS[order.status]}`}>
+                        {order.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{order.date} · {order.time}</p>
+                  </div>
+                  <span className="text-sm font-black text-slate-800 shrink-0">
+                    RM{order.fare === 'TBC' ? 'TBC' : (Number(order.fare) + order.night_charge).toFixed(0)}
+                  </span>
+                </div>
+
+                {/* Route */}
+                <div className="bg-slate-50 rounded-xl px-3 py-2 flex flex-col gap-1 text-[11px]">
+                  <div className="flex items-center gap-1.5 text-slate-600">
+                    <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
+                    <span className="font-semibold truncate">{order.pickup}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-600">
+                    <Navigation className="w-3 h-3 text-red-500 shrink-0" />
+                    <span className="font-semibold truncate">{order.destination}</span>
+                  </div>
+                </div>
+
+                {/* Meta */}
+                <div className="flex items-center flex-wrap gap-3 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Users className="w-3 h-3" /> {order.passengers} pax
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {order.contact}
+                  </span>
+                  {order.night_charge > 0 && (
+                    <span className="text-amber-500 font-bold">Night +RM{order.night_charge}</span>
+                  )}
+                  {order.driver_name && (
+                    <span className="flex items-center gap-1 text-blue-500 font-semibold">
+                      <Car className="w-3 h-3" /> {order.driver_name}
+                    </span>
+                  )}
+                </div>
+
+                {order.notes && (
+                  <p className="text-[10px] text-slate-400 italic">"{order.notes}"</p>
+                )}
+
+                {/* Admin actions */}
+                <div className="flex gap-2 pt-1">
+                  {order.status === 'pending' && (
+                    <button
+                      onClick={() => handleForceStatus(order.id, 'cancelled')}
+                      className="flex-1 bg-red-50 border border-red-100 text-red-500 font-extrabold text-[10px] py-2 rounded-xl transition active:scale-95 flex items-center justify-center gap-1"
+                    >
+                      <Clock className="w-3 h-3" /> Cancel
+                    </button>
+                  )}
+                  {order.status === 'completed' && (
+                    <button
+                      onClick={() => handleForceStatus(order.id, 'pending')}
+                      className="flex-1 bg-amber-50 border border-amber-100 text-amber-600 font-extrabold text-[10px] py-2 rounded-xl transition active:scale-95 flex items-center justify-center gap-1"
+                    >
+                      <CheckCircle2 className="w-3 h-3" /> Re-open
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDelete(order.id)}
+                    disabled={deleting === order.id}
+                    className="px-3 bg-slate-50 border border-slate-200 text-slate-400 hover:text-red-500 font-extrabold text-[10px] py-2 rounded-xl transition active:scale-95 flex items-center justify-center gap-1 disabled:opacity-50"
+                  >
+                    {deleting === order.id
+                      ? <span className="w-3 h-3 rounded-full border border-slate-400 border-t-transparent animate-spin" />
+                      : <Trash2 className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+        </div>
+      )}
+
+      {/* ── RECEIPTS TAB (superadmin only) ── */}
+      {activeTab === 'receipts' && user.role === 'superadmin' && (
+        <div className="flex flex-col gap-4">
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-4 gap-2">
+            {(['all', 'verified', 'expired', 'pending'] as const).map(s => {
+              const count = s === 'all'
+                ? driverReceipts.length
+                : driverReceipts.filter(r => receiptStatus(r) === s).length;
+              const styles: Record<string, string> = {
+                all:      'bg-white border-slate-100 text-slate-700',
+                verified: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+                expired:  'bg-red-50 border-red-100 text-red-600',
+                pending:  'bg-amber-50 border-amber-100 text-amber-700',
+              };
+              return (
+                <button key={s} onClick={() => setReceiptFilter(s)}
+                  className={`rounded-2xl border p-3 flex flex-col items-center gap-1 transition active:scale-95 ${styles[s]} ${
+                    receiptFilter === s ? 'ring-2 ring-offset-1 ring-primary/40' : ''
+                  }`}
+                >
+                  <span className="text-lg font-black leading-none">{count}</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider capitalize">{s}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Receipt list */}
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <FileImage className="w-4 h-4" /> Driver Receipts
+              </h3>
+              <button onClick={loadReceipts}
+                className="w-7 h-7 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100 text-slate-400 hover:text-primary transition active:scale-90">
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {receiptsLoading ? (
+              <div className="flex justify-center py-8">
+                <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
+              </div>
+            ) : filteredReceipts.length === 0 ? (
+              <p className="text-xs text-slate-400 font-semibold text-center py-6">No drivers found.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {filteredReceipts.map(r => {
+                  const status  = receiptStatus(r);
+                  const expDate = r.fee_receipt_expiry ? new Date(r.fee_receipt_expiry) : null;
+                  const expLabel = expDate?.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+                  return (
+                    <div key={r.id} className="border border-slate-100 rounded-2xl p-4 flex flex-col gap-2.5">
+
+                      {/* Row 1: name + status badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-slate-800 truncate">{r.name}</p>
+                          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{r.gerak_id} · {r.campus}</p>
+                        </div>
+                        <span className={`text-[9px] font-extrabold px-2 py-1 rounded-full border uppercase shrink-0 flex items-center gap-1 ${RECEIPT_STATUS_STYLE[status]}`}>
+                          {status === 'verified' ? <ShieldCheck className="w-2.5 h-2.5" /> : <ShieldOff className="w-2.5 h-2.5" />}
+                          {status}
+                        </span>
+                      </div>
+
+                      {/* Row 2: receipt details */}
+                      <div className="grid grid-cols-3 gap-2 text-[10px]">
+                        <div className="bg-slate-50 rounded-xl px-3 py-2">
+                          <p className="text-slate-400 font-semibold mb-0.5">Amount</p>
+                          <p className="font-extrabold text-slate-700">{r.fee_receipt_amount || '—'}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl px-3 py-2">
+                          <p className="text-slate-400 font-semibold mb-0.5">Paid</p>
+                          <p className="font-extrabold text-slate-700">{r.fee_receipt_date || '—'}</p>
+                        </div>
+                        <div className={`rounded-xl px-3 py-2 ${status === 'expired' ? 'bg-red-50' : 'bg-slate-50'}`}>
+                          <p className="text-slate-400 font-semibold mb-0.5">Expires</p>
+                          <p className={`font-extrabold ${status === 'expired' ? 'text-red-500' : 'text-slate-700'}`}>
+                            {expLabel ?? '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Reject reason */}
+                      {status === 'rejected' && r.fee_receipt_reject_reason && (
+                        <p className="text-[10px] text-orange-600 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 font-semibold">
+                          Rejected: {r.fee_receipt_reject_reason}
+                        </p>
+                      )}
+
+                      {/* View receipt link */}
+                      {r.fee_receipt_url && (
+                        <a href={r.fee_receipt_url} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 bg-primary/5 border border-primary/20 text-primary font-extrabold text-[10px] py-2 rounded-xl hover:bg-primary/10 transition active:scale-95">
+                          <ExternalLink className="w-3 h-3" /> View Receipt
+                        </a>
+                      )}
+
+                      {/* Approve / Reject — pending receipts only */}
+                      {status === 'pending' && r.fee_receipt_url && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApproveReceipt(r)}
+                            disabled={approvingReceipt === r.id || rejectingReceipt === r.id}
+                            className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[10px] py-2.5 rounded-xl transition active:scale-95 disabled:opacity-50"
+                          >
+                            {approvingReceipt === r.id
+                              ? <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                              : <><ShieldCheck className="w-3 h-3" /> Approve</>}
+                          </button>
+                          <button
+                            onClick={() => handleRejectReceipt(r)}
+                            disabled={approvingReceipt === r.id || rejectingReceipt === r.id}
+                            className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 border border-red-200 text-red-600 font-extrabold text-[10px] py-2.5 rounded-xl transition active:scale-95 disabled:opacity-50"
+                          >
+                            {rejectingReceipt === r.id
+                              ? <span className="w-3 h-3 rounded-full border-2 border-red-400 border-t-transparent animate-spin" />
+                              : <><ShieldOff className="w-3 h-3" /> Reject</>}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── CALENDAR TAB ── */}
+      {activeTab === 'calendar' && (
+        <div className="flex flex-col gap-4">
+
+          {/* Current status */}
+          <div className={`rounded-2xl p-4 flex items-center gap-3 ${calActiveYear ? 'bg-emerald-50 border border-emerald-100' : 'bg-slate-50 border border-slate-100'}`}>
+            <CalendarDays className={`w-5 h-5 shrink-0 ${calActiveYear ? 'text-emerald-500' : 'text-slate-400'}`} />
+            <div>
+              <p className="text-xs font-extrabold text-slate-700">Active Calendar</p>
+              <p className={`text-[10px] font-semibold ${calActiveYear ? 'text-emerald-600' : 'text-slate-400'}`}>
+                {calActiveYear ? `UMPSA ${calActiveYear}` : 'No calendar uploaded yet'}
+              </p>
+            </div>
+          </div>
+
+          {/* Upload section */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col gap-4">
+            <div>
+              <p className="text-xs font-extrabold text-slate-700">Upload New Calendar PDF</p>
+              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Claude AI will parse the PDF and extract all semester events automatically.</p>
+            </div>
+
+            <input ref={calUploadRef} type="file" accept="application/pdf" className="hidden" onChange={handleCalendarUpload} />
+
+            <button onClick={() => calUploadRef.current?.click()} disabled={calParsing}
+              className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-slate-200 rounded-xl py-3 text-slate-500 hover:border-primary hover:text-primary hover:bg-primary/5 transition text-xs font-bold disabled:opacity-50">
+              {calParsing ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-slate-300 border-t-primary animate-spin" />
+                  Parsing with AI… please wait
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Choose PDF to Upload
+                </>
+              )}
+            </button>
+
+            {/* Parsed preview */}
+            {calParsed && (
+              <div className="flex flex-col gap-3">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-primary" />
+                    <p className="text-xs font-extrabold text-slate-700">Preview — {calParsed.academic_year}</p>
+                  </div>
+                  <button onClick={() => setCalParsed(null)} className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 active:scale-90">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* Semester mini-tabs */}
+                <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+                  {calParsed.semesters?.map((s: any, i: number) => (
+                    <button key={s.id} onClick={() => setCalPreviewSem(i)}
+                      className={`shrink-0 px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition ${calPreviewSem === i ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      {s.short}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Events list */}
+                <div className="flex flex-col gap-2 max-h-64 overflow-y-auto no-scrollbar">
+                  {calParsed.semesters?.[calPreviewSem]?.events?.map((ev: any, i: number) => (
+                    <div key={i} className="bg-slate-50 rounded-xl px-3 py-2.5 flex items-start justify-between gap-2">
+                      <div>
+                        <span className={`text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-full mr-1.5 ${
+                          ev.type === 'exam'         ? 'bg-red-100 text-red-600' :
+                          ev.type === 'study'        ? 'bg-amber-100 text-amber-600' :
+                          ev.type === 'break'        ? 'bg-slate-200 text-slate-500' :
+                          ev.type === 'lectures'     ? 'bg-emerald-100 text-emerald-600' :
+                          ev.type === 'orientation'  ? 'bg-purple-100 text-purple-600' :
+                                                       'bg-blue-100 text-blue-600'
+                        }`}>{ev.type}</span>
+                        <span className="text-[10px] font-bold text-slate-700">{ev.title}</span>
+                        <p className="text-[9px] text-slate-400 font-semibold mt-0.5">{ev.date}</p>
+                      </div>
+                      {ev.duration && <span className="text-[9px] bg-white border border-slate-100 text-slate-400 font-bold px-1.5 py-0.5 rounded-full shrink-0">{ev.duration}</span>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Holidays count */}
+                <p className="text-[10px] text-slate-400 font-semibold">
+                  {calParsed.holidays?.length ?? 0} public holidays / special dates detected
+                </p>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <button onClick={handleCalendarSave} disabled={calSaving}
+                    className="flex-1 bg-primary text-white text-xs font-extrabold py-3 rounded-2xl active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    {calSaving
+                      ? <><span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" /> Saving…</>
+                      : <><CheckCircle2 className="w-4 h-4" /> Confirm & Activate</>}
+                  </button>
+                  <button onClick={() => setCalParsed(null)}
+                    className="px-4 bg-slate-100 text-slate-500 text-xs font-extrabold py-3 rounded-2xl active:scale-95 transition">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Instructions */}
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex gap-2 items-start">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="text-[10px] text-amber-700 font-semibold leading-relaxed flex flex-col gap-0.5">
+              <p className="font-extrabold">How to update the calendar:</p>
+              <p>1. Download the latest UMPSA Academic Calendar PDF from the university website.</p>
+              <p>2. Tap "Choose PDF to Upload" above.</p>
+              <p>3. Wait for AI parsing (~10–15 seconds).</p>
+              <p>4. Review the extracted events, then tap "Confirm & Activate".</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+
+    {/* ── Invite Confirmation Modal ── */}
+    {showInviteConfirm && (
+      <div
+        className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
+        onClick={() => setShowInviteConfirm(false)}
+      >
+        <div
+          className="w-full max-w-sm bg-white rounded-t-3xl p-6 pb-10 shadow-2xl animate-slide-up"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Handle bar */}
+          <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+
+          {/* Title */}
+          <h3 className="text-sm font-black text-slate-800 text-center mb-1">Confirm Driver Invite</h3>
+          <p className="text-[10px] text-slate-400 font-semibold text-center mb-5">
+            Please review before sending.
+          </p>
+
+          {/* Receipt-style card */}
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden mb-5">
+
+            {/* Header stripe */}
+            <div className="bg-primary px-4 py-3 flex items-center gap-2">
+              <Send className="w-3.5 h-3.5 text-white" />
+              <span className="text-white font-extrabold text-xs uppercase tracking-widest">Driver Invite</span>
+            </div>
+
+            {/* Details */}
+            <div className="px-4 py-4 flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Email</p>
+                <p className="text-xs font-extrabold text-slate-800 text-right break-all">{inviteEmail.trim().toLowerCase()}</p>
+              </div>
+
+              <div className="h-px bg-slate-100" />
+
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Campus</p>
+                <span className="text-xs font-extrabold text-slate-800">UMPSA {inviteCampus}</span>
+              </div>
+
+              <div className="h-px bg-slate-100" />
+
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Capabilities</p>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className={`flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-1 rounded-full ${
+                    inviteCanDrive
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-slate-100 text-slate-400 line-through'
+                  }`}>
+                    <Car className="w-3 h-3" /> Gerak Car {inviteCanDrive ? '✓' : '✗'}
+                  </span>
+                  <span className={`flex items-center gap-1.5 text-[10px] font-extrabold px-2.5 py-1 rounded-full ${
+                    inviteCanRent
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-slate-100 text-slate-400 line-through'
+                  }`}>
+                    <KeyRound className="w-3 h-3" /> Gerak Rental {inviteCanRent ? '✓' : '✗'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer stripe */}
+            <div className="bg-slate-100 px-4 py-2.5">
+              <p className="text-[9px] text-slate-400 font-semibold text-center">
+                Sent by {user.name} · {new Date().toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowInviteConfirm(false)}
+              className="flex-1 bg-slate-100 text-slate-600 font-extrabold text-xs py-3 rounded-2xl transition active:scale-95"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { setShowInviteConfirm(false); handleSendInvite(); }}
+              disabled={inviteSending}
+              className="flex-1 bg-primary hover:bg-primary-hover text-white font-extrabold text-xs py-3 rounded-2xl transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+            >
+              {inviteSending
+                ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                : <><Send className="w-3.5 h-3.5" /> Yes, Send Invite</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
+  );
+};

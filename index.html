@@ -1,12 +1,40 @@
 <!doctype html>
-<html lang="en">
+<html lang="ms">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <!-- Viewport: viewport-fit=cover lets content fill under notch/home-bar -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!-- PWA manifest + theme (red = gerak brand) -->
     <meta name="theme-color" content="#EF4444" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <link rel="manifest" href="/manifest.json" />
-    <title>GERAK — Smart Campus Platform</title>
+
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="gerak" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
+
+    <!-- Android -->
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- SEO / share -->
+    <meta name="description" content="Campus transport, jubah delivery and car rental for UMPSA students." />
+    <meta name="application-name" content="gerak" />
+
+    <!-- Prevent browser auto-linking phone numbers / emails -->
+    <meta name="format-detection" content="telephone=no, email=no, address=no" />
+
+    <!-- Performance: preconnect to Google Fonts CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <title>gerak — Smart Campus</title>
   </head>
   <body>
     <div id="root"></div>

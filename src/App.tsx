@@ -8,116 +8,128 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { Transport } from './pages/Transport';
 import { Jubah } from './pages/Jubah';
-import { Food } from './pages/Food';
 import { Profile } from './pages/Profile';
 import { NotificationsPage } from './pages/NotificationsPage';
-import { Download } from 'lucide-react';
-
+import { DriverHome } from './pages/DriverHome';
+import { AdminHome } from './pages/AdminHome';
+import { MyOrders } from './pages/MyOrders';
+import { GerakRental } from './pages/GerakRental';
+import { AcademicCalendar } from './pages/AcademicCalendar';
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const isIos = (): boolean => /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-const isInStandaloneMode = (): boolean =>
-  ('standalone' in window.navigator) && (window.navigator as any).standalone === true;
+const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  (window.navigator as any).standalone === true;
 
-const InstallButton: React.FC = () => {
+const InstallPrompt: React.FC = () => {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
-  const [showIosSheet, setShowIosSheet] = useState(false);
-
-  const iosDevice = isIos();
-  const alreadyInstalled = isInStandaloneMode();
+  const [show, setShow]         = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [step, setStep]         = useState<'prompt' | 'ios'>('prompt');
 
   useEffect(() => {
+    if (isStandalone() || dismissed) return;
     const handler = (e: Event) => {
       e.preventDefault();
       setInstallEvent(e as BeforeInstallPromptEvent);
+      // Delay so it doesn't pop immediately on load
+      setTimeout(() => setShow(true), 3500);
     };
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', () => setInstalled(true));
+    window.addEventListener('appinstalled', () => setShow(false));
+    // iOS: show after delay
+    if (isIos() && !isStandalone()) {
+      setTimeout(() => { setStep('ios'); setShow(true); }, 3500);
+    }
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [dismissed]);
+
+  const dismiss = () => { setShow(false); setDismissed(true); };
 
   const handleInstall = async () => {
-    if (iosDevice) {
-      setShowIosSheet(true);
-      return;
-    }
     if (!installEvent) return;
     await installEvent.prompt();
     const { outcome } = await installEvent.userChoice;
-    if (outcome === 'accepted') {
-      setInstallEvent(null);
-      setInstalled(true);
-    }
+    if (outcome === 'accepted') dismiss();
   };
 
-  // Hide if already installed as standalone
-  if (alreadyInstalled || installed) return null;
-
-  // Hide on non-iOS if no install prompt available
-  if (!iosDevice && !installEvent) return null;
+  if (!show || isStandalone()) return null;
 
   return (
-    <>
-      {/* Install App pill button — top left, always visible on iOS */}
-      <button
-        onClick={handleInstall}
-        className="fixed top-4 left-4 z-[9999] flex items-center gap-2 bg-white border border-slate-200 text-slate-700 font-semibold text-sm px-4 py-2 rounded-full shadow-md active:scale-95 transition"
+    <div
+      className="fixed inset-0 z-[9998] flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}
+      onClick={dismiss}
+    >
+      <div
+        className="w-full bg-white rounded-t-3xl shadow-2xl animate-slide-up overflow-hidden"
+        style={{ maxWidth: 480, paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
+        onClick={e => e.stopPropagation()}
       >
-        <Download className="w-4 h-4" />
-        Install App
-      </button>
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-slate-200 rounded-full" />
+        </div>
 
-      {/* iOS instruction bottom sheet */}
-      {showIosSheet && (
-        <div
-          className="fixed inset-0 z-[9998] bg-black/50 flex items-end justify-center"
-          onClick={() => setShowIosSheet(false)}
-        >
-          <div
-            className="w-full bg-white rounded-t-3xl p-6 pb-10 shadow-2xl animate-slide-up"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-base font-black text-slate-800 mb-4 text-center">
-              Install gerak on your iPhone
-            </h3>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4 bg-slate-50 rounded-2xl p-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl shrink-0">1</div>
-                <p className="text-sm text-slate-700 font-medium">
-                  Tap the <span className="font-black">Share</span> button{' '}
-                  <span className="inline-block bg-slate-200 rounded px-2 py-0.5 text-base">⬆</span>{' '}
-                  at the bottom of Safari
-                </p>
+        {/* App card */}
+        <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-100">
+          <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-md overflow-hidden shrink-0 flex items-center justify-center">
+            <img src="/gerak-icon.svg" alt="Gerak" className="w-full h-full object-contain" />
+          </div>
+          <div>
+            <p className="text-base font-black text-slate-900 m-0" style={{ fontFamily: 'Prata, serif' }}>
+              ger<span style={{ color: '#EF4444' }}>a</span>k
+            </p>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">Smart Campus Platform · UMPSA</p>
+          </div>
+        </div>
+
+        {step === 'ios' ? (
+          /* iOS instructions */
+          <div className="px-6 pt-5 pb-2 flex flex-col gap-3">
+            <p className="text-sm font-black text-slate-800 text-center">Add to your Home Screen</p>
+            {[
+              { n: '1', icon: '⬆', text: <>Tap the <b>Share</b> button at the bottom of Safari</> },
+              { n: '2', icon: '➕', text: <>Tap <b>"Add to Home Screen"</b></> },
+              { n: '3', icon: '✅', text: <>Tap <b>"Add"</b> — gerak opens like a real app</> },
+            ].map(({ n, icon, text }) => (
+              <div key={n} className="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3">
+                <span className="w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center shrink-0">{n}</span>
+                <span className="text-sm text-slate-700 font-medium">{icon} {text}</span>
               </div>
-              <div className="flex items-center gap-4 bg-slate-50 rounded-2xl p-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl shrink-0">2</div>
-                <p className="text-sm text-slate-700 font-medium">
-                  Scroll down and tap{' '}
-                  <span className="font-black">"Add to Home Screen"</span>
-                </p>
-              </div>
-              <div className="flex items-center gap-4 bg-slate-50 rounded-2xl p-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl shrink-0">3</div>
-                <p className="text-sm text-slate-700 font-medium">
-                  Tap <span className="font-black">"Add"</span> — gerak will appear on your home screen
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowIosSheet(false)}
-              className="mt-5 w-full bg-slate-900 text-white font-bold py-3 rounded-2xl text-sm"
-            >
+            ))}
+            <button onClick={dismiss}
+              className="mt-2 w-full bg-slate-900 text-white font-extrabold py-3.5 rounded-2xl text-sm active:scale-95 transition">
               Got it
             </button>
           </div>
-        </div>
-      )}
-    </>
+        ) : (
+          /* Android / Chrome install */
+          <div className="px-6 pt-5 pb-2 flex flex-col gap-4">
+            <div className="text-center">
+              <p className="text-sm font-black text-slate-800 mb-1">Install gerak on your phone</p>
+              <p className="text-[11px] text-slate-400 font-semibold leading-relaxed">
+                Works offline · loads instantly · no App Store needed
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={dismiss}
+                className="flex-1 bg-slate-100 text-slate-600 font-extrabold text-sm py-3.5 rounded-2xl active:scale-95 transition">
+                Not now
+              </button>
+              <button onClick={handleInstall}
+                className="flex-1 bg-primary text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg shadow-primary/25 active:scale-95 transition">
+                Install
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -259,12 +271,20 @@ const AppContent: React.FC = () => {
         return <Transport />;
       case 'jubah':
         return <Jubah />;
-      case 'food':
-        return <Food />;
       case 'profile':
         return <Profile />;
       case 'notifications':
         return <NotificationsPage />;
+      case 'driver-home':
+        return <DriverHome />;
+      case 'admin-home':
+        return <AdminHome />;
+      case 'my-orders':
+        return <MyOrders />;
+      case 'gerak-rental':
+        return <GerakRental />;
+      case 'academic-calendar':
+        return <AcademicCalendar />;
       default:
         return <Dashboard />;
     }
@@ -273,7 +293,9 @@ const AppContent: React.FC = () => {
   return (
     <div className="mobile-container flex flex-col h-full bg-white select-none">
       <Header />
-      {renderPage()}
+      <div key={currentPage} className="flex-1 flex flex-col overflow-hidden page-transition">
+        {renderPage()}
+      </div>
       <BottomNav />
     </div>
   );
@@ -282,7 +304,7 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <AppProvider>
-      <InstallButton />
+      <InstallPrompt />
       <SwipeBackGesture>
         <AppContent />
       </SwipeBackGesture>

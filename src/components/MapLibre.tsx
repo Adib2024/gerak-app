@@ -1,18 +1,19 @@
 import React, { useRef, useEffect, useState } from 'react';
 import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { useApp } from '../context/AppContext';
 
 const COORDS: Record<string, [number, number]> = {
-  'Kolej Kediaman Pertama (KK1)':                [101.6835, 3.1398],
-  'Kolej Kediaman Ketiga (KK3)':                 [101.6820, 3.1382],
-  'Fakulti Sains Komputer & Teknologi Maklumat': [101.6870, 3.1405],
-  'Dewan Peperiksaan Utama':                     [101.6895, 3.1370],
-  'Perpustakaan Sentral':                        [101.6880, 3.1385],
-  'Pusat Sukan':                                 [101.6845, 3.1365],
+  'Kolej Kediaman Pertama (KK1)':                [103.1658, 3.7478],
+  'Kolej Kediaman Ketiga (KK3)':                 [103.1642, 3.7465],
+  'Fakulti Sains Komputer & Teknologi Maklumat': [103.1695, 3.7440],
+  'Dewan Peperiksaan Utama':                     [103.1718, 3.7425],
+  'Perpustakaan Sentral':                        [103.1705, 3.7448],
+  'Pusat Sukan':                                 [103.1670, 3.7415],
 };
 
-// Off-campus spawn point for the driver
-const DRIVER_SPAWN: [number, number] = [101.6912, 3.1418];
+// Off-campus spawn point for the driver (Gambang town area)
+const DRIVER_SPAWN: [number, number] = [103.1750, 3.7510];
 
 // Slightly under the 6-second stage timer so animation completes before next stage
 const ANIM_MS = 5300;
@@ -82,10 +83,10 @@ const makeDestEl = (): HTMLElement => {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  searching: '🔍  Finding your driver...',
-  assigned:  '✅  Driver assigned — on the way',
-  arriving:  '🚗  Driver is approaching',
-  active:    '🚀  Trip in progress',
+  searching: 'Finding your driver...',
+  assigned:  'Driver assigned — on the way',
+  arriving:  'Driver is approaching',
+  active:    'Trip in progress',
 };
 
 const makeUserDotEl = (): HTMLElement => {
@@ -119,7 +120,7 @@ export const MapLibre: React.FC = () => {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-      center: [101.6869, 3.139],
+      center: [103.1688, 3.7450],
       zoom: 15,
       attributionControl: false,
     });
@@ -218,7 +219,7 @@ export const MapLibre: React.FC = () => {
     if (!activeRide) {
       clearMarkers();
       if (map.isStyleLoaded()) clearRoute(); else map.once('load', clearRoute);
-      map.easeTo({ center: [101.6869, 3.139], zoom: 15, duration: 800 });
+      map.easeTo({ center: [103.1688, 3.7450], zoom: 15, duration: 800 });
       return;
     }
 
@@ -291,7 +292,7 @@ export const MapLibre: React.FC = () => {
           if (userPosRef.current) {
             mapRef.current?.easeTo({ center: userPosRef.current, zoom: 16, duration: 600 });
           } else {
-            mapRef.current?.easeTo({ center: [101.6869, 3.139], zoom: 15, duration: 600 });
+            mapRef.current?.easeTo({ center: [103.1688, 3.7450], zoom: 15, duration: 600 });
           }
         }}
         className="absolute bottom-12 right-3 z-10 w-9 h-9 bg-white rounded-lg shadow-md border border-slate-100 flex items-center justify-center text-slate-500 hover:text-primary transition"

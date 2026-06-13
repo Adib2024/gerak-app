@@ -31,7 +31,7 @@ export const Login: React.FC = () => {
           g
         </div>
         <h2 className="text-2xl font-black text-slate-800 tracking-tight font-heading m-0">
-          Sign In to <span style={{ fontFamily: 'Prata, serif', fontSize: '2.5rem', lineHeight: 1 }}>ger<span style={{ color: '#38bdf8' }}>a</span>k</span>
+          Sign In to <span style={{ fontFamily: 'Prata, serif', fontSize: '2.5rem', lineHeight: 1 }}>ger<span style={{ color: '#EF4444' }}>a</span>k</span>
         </h2>
         <p className="text-slate-400 text-xs mt-1 font-semibold">
           Smart Campus Service Platform

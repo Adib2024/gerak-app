@@ -1,6 +1,6 @@
-@import "tailwindcss";
-
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Prata&display=swap');
+
+@import "tailwindcss";
 
 @theme {
   --font-sans: 'Inter', sans-serif;
@@ -13,7 +13,7 @@
   --color-primary-dark: #991B1B;
   --color-secondary: #0ea5e9; /* Sky Blue */
   --color-accent: #f59e0b; /* Amber */
-  --color-danger: #ef4444; /* Rose */
+  --color-danger: #DC2626; /* Red */
   
   --animate-fade-in: fade-in 0.25s ease-out forwards;
   --animate-slide-up: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -40,8 +40,8 @@
     to { transform: scale(1); opacity: 1; }
   }
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-    50% { box-shadow: 0 0 16px 4px rgba(16, 185, 129, 0.2); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 16px 4px rgba(239, 68, 68, 0.2); }
   }
   @keyframes float {
     0%, 100% { transform: translateY(0); }
@@ -53,29 +53,53 @@
   }
 }
 
-/* Custom Base Overwrites */
+/* ─── Base resets ─────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: transparent; /* remove grey flash on tap */
+}
+
+/* Remove 300 ms click delay on all interactive elements */
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
+}
+
+html {
+  /* Prevents elastic over-scroll on the root document */
+  overscroll-behavior: none;
+  height: 100%;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #FFFFFF; /* White background */
-  color: #111827; /* Dark gray text */
+  background-color: #FFFFFF;
+  color: #111827;
   font-family: var(--font-sans);
   display: flex;
   justify-content: center;
   align-items: center;
+
+  /* Use dynamic viewport height — fixes iOS Safari address-bar resize */
   min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
+  overscroll-behavior: none;
+
+  /* Crisp text on all platforms */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Desktop Bezel Mockup and Responsiveness */
+/* ─── Desktop Bezel Mockup + Real-device Mobile ────────────────────── */
 .mobile-container {
   width: 100%;
+
+  /* 100dvh adjusts when iOS Safari toolbar appears/hides */
   height: 100vh;
+  height: 100dvh;
+
   background-color: #FFFFFF;
   display: flex;
   flex-direction: column;
@@ -110,13 +134,47 @@ body {
   }
 }
 
-/* Hide Scrollbars */
+/* ─── Safe-area helpers (iPhone notch / Dynamic Island / home bar) ── */
+/* Applied via inline style on Header + BottomNav so they work in both
+   standalone PWA mode and regular browser. On Android the values are 0. */
+
+/* ─── Smooth momentum scroll on iOS for all scrollable containers ─── */
+.no-scrollbar {
+  -webkit-overflow-scrolling: touch;  /* momentum scroll on iOS */
+  overscroll-behavior: contain;       /* prevent whole-page bounce when reaching end */
+}
+
+/* ─── Hide Scrollbars ─────────────────────────────────────────────── */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* ─── iOS input zoom prevention ───────────────────────────────────── */
+/* iOS zooms into any input with font-size < 16 px. Force 16 px on mobile,
+   visually offset with a slight scale so the layout stays compact.       */
+@media screen and (max-width: 480px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    /* scale back to ~0.875 (≈14px) visually without triggering zoom */
+    transform: scale(0.9375);
+    transform-origin: left center;
+    width: calc(100% / 0.9375);
+  }
+}
+
+/* ─── Page transition helper ──────────────────────────────────────── */
+.page-transition {
+  animation: page-enter 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
 /* Glassmorphism Classes */

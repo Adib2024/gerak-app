@@ -3,77 +3,75 @@ import { useApp } from '../context/AppContext';
 
 export const SplashScreen: React.FC = () => {
   const { setCurrentPage } = useApp();
-  const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState<'enter' | 'idle' | 'exit'>('enter');
 
   useEffect(() => {
-    // Increment loading progress
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(timer);
-          return 100;
-        }
-        return prev + 4;
-      });
-    }, 80);
-
-    // Transition to login after progress is filled
-    const transitionTimer = setTimeout(() => {
-      setCurrentPage('login');
-    }, 2400);
-
-    return () => {
-      clearInterval(timer);
-      clearTimeout(transitionTimer);
-    };
+    const t1 = setTimeout(() => setPhase('idle'),  400);
+    const t2 = setTimeout(() => setPhase('exit'),  2000);
+    const t3 = setTimeout(() => setCurrentPage('login'), 2600);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [setCurrentPage]);
 
   return (
-    <div className="flex-1 bg-gradient-to-tr from-emerald-950 via-emerald-700 to-emerald-500 flex flex-col items-center justify-between p-8 text-white select-none animate-fade-in h-full">
-      {/* Spacer */}
-      <div className="h-10" />
+    <div className="flex-1 bg-white flex flex-col items-center justify-center select-none h-full relative overflow-hidden">
 
-      {/* Center Branding */}
-      <div className="flex flex-col items-center gap-4 animate-float">
-        {/* Animated Glowing Logo Mark */}
-        <div className="w-24 h-24 rounded-[32px] bg-white flex items-center justify-center font-black text-6xl shadow-[0_20px_50px_rgba(16,185,129,0.3)] border-4 border-emerald-300/40 relative" style={{ color: '#0f172a' }}>
-          g
-          {/* Pulsing ring indicator */}
-          <span className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-amber-400 rounded-full border-4 border-white flex items-center justify-center text-[10px] font-extrabold text-slate-800 shadow-md">
-            ★
-          </span>
+      {/* Logo block */}
+      <div
+        style={{
+          opacity:    phase === 'enter' ? 0 : 1,
+          transform:  phase === 'enter' ? 'scale(0.88) translateY(12px)' : 'scale(1) translateY(0)',
+          transition: 'opacity 0.5s ease-out, transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+        }}
+        className="flex flex-col items-center gap-3"
+      >
+        {/* App icon — wordmark in a rounded square */}
+        <div className="w-24 h-24 rounded-[28px] bg-white border border-slate-100 shadow-2xl shadow-slate-200 overflow-hidden mb-2">
+          <img src="/gerak-icon.svg" alt="Gerak" className="w-full h-full object-contain" />
         </div>
 
-        <div className="text-center mt-2">
-          <h1 className="text-7xl font-extrabold tracking-tight m-0 drop-shadow-md" style={{ fontFamily: 'Prata, serif' }}>
-            <span style={{ color: '#ffffff' }}>ger</span><span style={{ color: '#38bdf8' }}>a</span><span style={{ color: '#ffffff' }}>k</span>
-          </h1>
-          <p className="text-emerald-100 font-bold text-xs tracking-wider uppercase mt-1 opacity-90">
-            Smart Campus Service Platform
-          </p>
+        {/* Wordmark */}
+        <h1 className="text-5xl font-extrabold tracking-tight m-0" style={{ fontFamily: 'Prata, serif', color: '#0f172a' }}>
+          ger<span style={{ color: '#EF4444' }}>a</span>k
+        </h1>
+
+        <p className="text-slate-400 font-semibold text-[11px] tracking-[0.2em] uppercase m-0">
+          Smart Campus Platform
+        </p>
+
+        {/* Loading dots */}
+        <div className="flex items-center gap-1.5 mt-4">
+          {[0, 1, 2].map(i => (
+            <span
+              key={i}
+              style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#EF4444',
+                opacity: phase === 'idle' ? 1 : 0.2,
+                animation: phase === 'idle' ? `dot-bounce 1.2s ${i * 0.2}s ease-in-out infinite` : 'none',
+              }}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Bottom Progress Bar & Credits */}
-      <div className="w-full max-w-xs flex flex-col items-center gap-6 mb-8">
-        {/* Progress Bar Container */}
-        <div className="w-full bg-emerald-900/40 border border-emerald-400/20 h-2.5 rounded-full overflow-hidden p-0.5 shadow-inner">
-          <div 
-            className="bg-gradient-to-r from-amber-400 to-emerald-300 h-full rounded-full transition-all duration-100 shadow-xs"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        
-        {/* Loading text */}
-        <div className="text-[10px] font-bold text-emerald-200/80 tracking-widest uppercase animate-pulse">
-          Connecting to Campus Node... {progress}%
-        </div>
+      {/* Red circle burst on exit */}
+      <div
+        style={{
+          position:        'absolute',
+          inset:           0,
+          backgroundColor: '#EF4444',
+          clipPath:        phase === 'exit' ? 'circle(150% at 50% 50%)' : 'circle(0% at 50% 50%)',
+          transition:      phase === 'exit' ? 'clip-path 0.6s cubic-bezier(0.4,0,0.2,1)' : 'none',
+          zIndex:          50,
+        }}
+      />
 
-        {/* Brand signature */}
-        <div className="text-[8px] font-bold text-emerald-300/60 uppercase tracking-widest mt-4">
-          Gerak Inc • Powered by Universiti Perdana
-        </div>
-      </div>
+      <style>{`
+        @keyframes dot-bounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+          40%            { transform: translateY(-6px); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };

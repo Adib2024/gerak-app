@@ -1,180 +1,484 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Award, Wallet, ArrowUpRight, LogOut, Heart, Sparkles, HelpCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import {
+  ChevronRight, CheckCircle2, HelpCircle, Heart, LogOut,
+  Pencil, X, Car, Upload, FileImage,
+  ShieldCheck, ShieldOff, AlertTriangle, Clock, RefreshCw,
+} from 'lucide-react';
+
+/* Derive active status from verified + non-expired receipt */
+export const driverIsActive = (user: { role: string; feeReceiptVerified: boolean; feeReceiptExpiry: string }) =>
+  user.role === 'driver' &&
+  user.feeReceiptVerified &&
+  !!user.feeReceiptExpiry &&
+  new Date(user.feeReceiptExpiry) > new Date();
 
 export const Profile: React.FC = () => {
-  const { user, logout, topUpWallet } = useApp();
+  const { user, logout, updateProfile, refreshUserData } = useApp();
 
-  const handleQuickLoad = (amount: number) => {
-    topUpWallet(amount);
+  const isDriver = user.role === 'driver';
+  const isActive = driverIsActive(user);
+
+  const [editMode, setEditMode]         = useState(false);
+  const [draftName, setDraftName]       = useState('');
+  const [draftMatric, setDraftMatric]   = useState('');
+  const [draftEmail, setDraftEmail]     = useState('');
+  const [draftPhone, setDraftPhone]     = useState('');
+  const [draftVehicle, setDraftVehicle] = useState('');
+  const [draftPlate, setDraftPlate]     = useState('');
+  const [saving, setSaving]             = useState(false);
+  const [saveError, setSaveError]       = useState('');
+  const [uploading, setUploading]       = useState(false);
+  const [verifying, setVerifying]       = useState(false);
+  const [verifyMsg, setVerifyMsg]       = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const enterEdit = () => {
+    setDraftName(user.name);
+    setDraftMatric(user.matricNo);
+    setDraftEmail(user.email);
+    setDraftPhone(user.phone);
+    setDraftVehicle(user.vehicle);
+    setDraftPlate(user.plateNumber);
+    setSaveError('');
+    setEditMode(true);
   };
 
+  const cancelEdit = () => { setEditMode(false); setSaveError(''); };
+
+  const handleSave = async () => {
+    setSaveError('');
+    setSaving(true);
+    const { error } = await updateProfile({
+      name:        draftName.trim(),
+      matricNo:    draftMatric.trim(),
+      email:       draftEmail.trim(),
+      phone:       draftPhone.trim(),
+      vehicle:     draftVehicle.trim(),
+      plateNumber: draftPlate.trim().toUpperCase(),
+    });
+    setSaving(false);
+    if (error) { setSaveError(error); return; }
+    setEditMode(false);
+  };
+
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setVerifyMsg('');
+
+    if (file.size > 5 * 1024 * 1024) {
+      setVerifyMsg('File too large. Please upload an image under 5 MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // 1. Upload image to Supabase Storage
+    setUploading(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) { setUploading(false); return; }
+
+    const ext  = file.name.split('.').pop() ?? 'jpg';
+    const path = `${authUser.id}/monthly_receipt.${ext}`;
+
+    const { error: upErr } = await supabase.storage
+      .from('driver-receipts')
+      .upload(path, file, { upsert: true });
+
+    if (upErr) {
+      setUploading(false);
+      setVerifyMsg('Upload failed. Please try again.');
+      return;
+    }
+
+    // Store signed URL (bucket is private — signed URLs are the only valid access method)
+    const { data: signed } = await supabase.storage
+      .from('driver-receipts')
+      .createSignedUrl(path, 60 * 60 * 24 * 30);
+    const url = signed?.signedUrl ?? '';
+    await updateProfile({ feeReceiptUrl: url });
+    setUploading(false);
+
+    // 2. Call Edge Function for AI verification
+    setVerifying(true);
+    const { data: session } = await supabase.auth.getSession();
+    const result = await supabase.functions.invoke('verify-receipt', {
+      body: { imagePath: path },
+      headers: { Authorization: `Bearer ${session.session?.access_token}` },
+    });
+
+    setVerifying(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    if (result.error) {
+      setVerifyMsg('Verification service error. Please try again.');
+      return;
+    }
+
+    await refreshUserData();
+    // Clear inline message — the rejected/verified card now shows the correct state
+    setVerifyMsg('');
+  };
+
+  const handleDeleteAccount = () => {
+    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      alert('Account deletion request submitted. Our team will process it within 24 hours.');
+    }
+  };
+
+  /* ── Expiry display helpers ── */
+  const expiryDate  = user.feeReceiptExpiry ? new Date(user.feeReceiptExpiry) : null;
+  const isExpired   = expiryDate ? expiryDate <= new Date() : false;
+  const daysLeft    = expiryDate
+    ? Math.ceil((expiryDate.getTime() - Date.now()) / 86_400_000)
+    : null;
+  const expiryLabel = expiryDate?.toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* Receipt section state */
+  const hasReceipt = !!user.feeReceiptUrl;
+  const isRejected = hasReceipt && !user.feeReceiptVerified && !!user.feeReceiptRejectReason;
+
   return (
-    <div className="flex-grow bg-slate-50/50 overflow-y-auto no-scrollbar pb-6 px-4 animate-fade-in flex flex-col gap-4">
-      
-      {/* 1. HOLOGRAPHIC STUDENT DIGITAL CARD */}
-      <div className="mt-4 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-950 border border-slate-700/50 text-white rounded-3xl p-5 shadow-xl relative overflow-hidden group hover:shadow-emerald-950/20 transition duration-300">
-        
-        {/* Holographic Glowing Accents */}
-        <div className="absolute -left-10 -top-10 w-28 h-28 bg-primary/10 rounded-full blur-xl group-hover:bg-primary/20 transition" />
-        <div className="absolute right-0 bottom-0 w-24 h-24 bg-blue-500/10 rounded-full blur-lg" />
-        <div className="absolute right-3 top-3 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
-        <div className="absolute right-3 top-3 w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+    <div className="flex-grow bg-white overflow-y-auto no-scrollbar pb-10 animate-fade-in">
 
-        {/* Card Header */}
-        <div className="flex justify-between items-start mb-5 pb-3 border-b border-slate-800">
-          <div>
-            <h2 className="text-[10px] text-primary font-black tracking-widest uppercase m-0 leading-none">
-              Universiti Perdana
-            </h2>
-            <span className="text-[7px] text-slate-400 font-bold uppercase tracking-widest block mt-0.5">
-              Official Identity Card
+      {/* Page Title */}
+      <div className="px-5 pt-6 pb-2 flex items-center justify-between">
+        <h1 className="text-2xl font-black text-slate-900 m-0">Edit profile</h1>
+        <div className="flex items-center gap-2">
+
+          {/* Driver status badge — read-only */}
+          {isDriver && (
+            <span className={`flex items-center gap-1.5 text-[10px] font-extrabold px-3 py-1.5 rounded-full border ${
+              isActive
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : 'bg-red-50 border-red-200 text-red-500'
+            }`}>
+              {isActive ? <ShieldCheck className="w-3 h-3" /> : <ShieldOff className="w-3 h-3" />}
+              {isActive ? 'Active' : 'Inactive'}
             </span>
-          </div>
-          <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-        </div>
+          )}
 
-        {/* Card Details Grid */}
-        <div className="flex gap-4 mb-4">
-          {/* Student Photo Frame */}
-          <div className="w-16 h-20 bg-slate-800 border border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-400 shadow-inner select-none relative overflow-hidden">
-            <span className="text-xl font-extrabold text-slate-300">
-              {user.name.split(' ').map(n => n[0]).join('')}
-            </span>
-            <div className="absolute bottom-0 w-full bg-primary/20 text-primary py-0.5 text-center text-[7px] font-black uppercase">
-              STUDENT
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col justify-center">
-            <h3 className="text-sm font-black text-white m-0 leading-tight">
-              {user.name}
-            </h3>
-            <span className="text-[9px] text-primary font-extrabold tracking-widest mt-0.5 uppercase">
-              Matric: {user.matricNo}
-            </span>
-            
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2 text-[8px] text-slate-400 font-semibold uppercase">
-              <div>Faculty:</div>
-              <div className="text-white font-bold">FCSIT</div>
-              <div>Expiry:</div>
-              <div className="text-white font-bold">12/2028</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Simulated Barcode */}
-        <div className="bg-white rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-50 transition shadow-inner">
-          {/* Barcode lines */}
-          <div className="w-full flex items-center justify-between opacity-80 h-6">
-            {[1, 3, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 4, 3, 2, 1, 2, 3, 1].map((wt, i) => (
-              <div 
-                key={i} 
-                className={`bg-slate-900 h-full ${
-                  wt === 1 ? 'w-0.5' : wt === 2 ? 'w-0.75' : wt === 3 ? 'w-1' : 'w-1.5'
-                }`} 
-              />
-            ))}
-          </div>
-          <span className="text-[7px] text-slate-500 font-extrabold tracking-widest font-mono">
-            *{user.matricNo}*
-          </span>
-        </div>
-      </div>
-
-      {/* 2. GerakPay WALLET CONSOLE */}
-      <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm">
-        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-1.5 pl-1">
-          <Wallet className="w-4 h-4 text-slate-400" />
-          GerakPay Top Up
-        </h3>
-
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <span className="text-[10px] text-slate-400 font-bold block">Available Wallet Balance</span>
-            <span className="text-2xl font-black text-slate-800">RM{user.balance.toFixed(2)}</span>
-          </div>
-          <span className="bg-emerald-50 text-primary border border-emerald-100 text-[10px] font-black rounded-lg px-2.5 py-1">
-            Active Wallet
-          </span>
-        </div>
-
-        <p className="text-xs text-slate-400 leading-normal mb-4">
-          Instantly load virtual credits into your account to purchase meals, shuttle rides, or shipping models.
-        </p>
-
-        {/* Load Preset Grid */}
-        <div className="grid grid-cols-3 gap-2">
-          {[10.00, 20.00, 50.00].map((amt) => (
-            <button
-              key={amt}
-              onClick={() => handleQuickLoad(amt)}
-              className="py-2.5 bg-slate-50 hover:bg-primary-light border border-slate-150 hover:border-primary/20 rounded-xl text-xs font-extrabold text-slate-700 hover:text-primary transition flex items-center justify-center gap-1"
-            >
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              +RM{amt.toFixed(0)}
+          {!editMode ? (
+            <button onClick={enterEdit}
+              className="flex items-center gap-1.5 text-primary text-xs font-bold hover:underline active:scale-95 transition cursor-pointer">
+              <Pencil className="w-3.5 h-3.5" /> Edit
             </button>
-          ))}
+          ) : (
+            <button onClick={cancelEdit}
+              className="flex items-center gap-1 text-slate-400 text-xs font-bold hover:underline active:scale-95 transition cursor-pointer">
+              <X className="w-3.5 h-3.5" /> Cancel
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 3. CAMPUS LOYALTY TIER */}
-      <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center border border-amber-100 shadow-sm animate-float">
-            <Award className="w-6 h-6" />
-          </div>
-          <div>
-            <span className="text-[8px] text-slate-400 font-extrabold uppercase">Membership Level</span>
-            <h4 className="text-sm font-black text-slate-800 m-0 mt-0.5">Green Diamond Tier</h4>
-            <p className="text-[10px] text-slate-400 font-semibold mt-0.5 leading-none">
-              Total Points: <span className="text-amber-500 font-bold">{user.points} pts</span>
-            </p>
-          </div>
+      {/* Inactive hint */}
+      {isDriver && !isActive && !isExpired && (
+        <div className="mx-5 mt-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-start gap-2">
+          <ShieldOff className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] font-semibold text-red-500 leading-relaxed">
+            Account <strong>inactive</strong>. Upload your monthly fee receipt below to activate and accept jobs.
+          </p>
         </div>
-        <span className="text-[9px] font-extrabold bg-amber-50 text-amber-700 border border-amber-100 rounded-lg px-2 py-0.5">
-          1.5x Point Multiplier
-        </span>
+      )}
+
+      {/* Expiry warning */}
+      {isDriver && isActive && daysLeft !== null && daysLeft <= 3 && (
+        <div className="mx-5 mt-2 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] font-semibold text-amber-700 leading-relaxed">
+            Your account expires on <strong>{expiryLabel}</strong> ({daysLeft} day{daysLeft === 1 ? '' : 's'} left).
+            Pay RM25 on 1st–3rd of next month and re-upload your receipt.
+          </p>
+        </div>
+      )}
+
+      {/* Expired warning */}
+      {isDriver && isExpired && user.feeReceiptVerified && (
+        <div className="mx-5 mt-2 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] font-semibold text-red-600 leading-relaxed">
+            Your monthly fee <strong>expired</strong> on {expiryLabel}. Upload a new receipt to reactivate.
+          </p>
+        </div>
+      )}
+
+      {/* ── PROFILE FIELDS ── */}
+      <div className="px-5 mt-2">
+
+        {/* Full Name */}
+        <div className="flex items-center justify-between py-4 border-b border-slate-100">
+          <div className="flex-1 min-w-0 pr-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Full Name</span>
+            {editMode ? (
+              <input value={draftName} onChange={e => setDraftName(e.target.value)}
+                className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-primary transition"
+                placeholder="Full name" />
+            ) : <span className="text-sm font-medium text-slate-700 mt-1 block">{user.name || '—'}</span>}
+          </div>
+          {!editMode && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+        </div>
+
+        {/* Matric Number */}
+        <div className="flex items-center justify-between py-4 border-b border-slate-100">
+          <div className="flex-1 min-w-0 pr-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Matric Number</span>
+            {editMode ? (
+              <input value={draftMatric} onChange={e => setDraftMatric(e.target.value.toUpperCase())}
+                className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-primary transition"
+                placeholder="Matric number" />
+            ) : <span className="text-sm font-medium text-slate-700 mt-1 block">{user.matricNo || '—'}</span>}
+          </div>
+          {!editMode && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+        </div>
+
+        {/* Mobile Number */}
+        <div className="flex items-center justify-between py-4 border-b border-slate-100">
+          <div className="flex-1 min-w-0 pr-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Mobile Number</span>
+            {editMode ? (
+              <input type="tel" value={draftPhone} onChange={e => setDraftPhone(e.target.value)}
+                className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-primary transition"
+                placeholder="e.g. 0123456789" />
+            ) : <span className="text-sm font-medium text-slate-700 mt-1 block">{user.phone || '—'}</span>}
+          </div>
+          {!editMode && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+        </div>
+
+        {/* Email */}
+        <div className="flex items-center justify-between py-4 border-b border-slate-100">
+          <div className="flex-1 min-w-0 pr-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email Address</span>
+              <span className="flex items-center gap-0.5 bg-emerald-500 text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0">
+                <CheckCircle2 className="w-2.5 h-2.5" /> VERIFIED
+              </span>
+            </div>
+            {editMode ? (
+              <input type="email" value={draftEmail} onChange={e => setDraftEmail(e.target.value)}
+                className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-primary transition"
+                placeholder="Email address" />
+            ) : <span className="text-sm font-medium text-slate-700 mt-1 block">{user.email || '—'}</span>}
+          </div>
+          {!editMode && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+        </div>
+
+        {/* ── Driver-only fields ── */}
+        {isDriver && (
+          <>
+            {/* Car Type / Model */}
+            <div className="flex items-center justify-between py-4 border-b border-slate-100">
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 block">
+                  <Car className="w-3 h-3" /> Car Type / Model
+                </span>
+                {editMode ? (
+                  <input value={draftVehicle} onChange={e => setDraftVehicle(e.target.value)}
+                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-primary transition"
+                    placeholder="e.g. Perodua Myvi 1.5" />
+                ) : <span className="text-sm font-medium text-slate-700 mt-1 block">{user.vehicle || '—'}</span>}
+              </div>
+              {!editMode && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+            </div>
+
+            {/* Plate Number */}
+            <div className="flex items-center justify-between py-4 border-b border-slate-100">
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Plate Number</span>
+                {editMode ? (
+                  <input value={draftPlate} onChange={e => setDraftPlate(e.target.value.toUpperCase())}
+                    className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-primary transition"
+                    placeholder="e.g. WMY 1234" />
+                ) : <span className="text-sm font-medium text-slate-700 mt-1 block font-mono tracking-wider">{user.plateNumber || '—'}</span>}
+              </div>
+              {!editMode && <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />}
+            </div>
+
+            {/* ── Monthly Fee Receipt ── */}
+            <div className="flex items-start justify-between py-4 border-b border-slate-100">
+              <div className="flex-1 min-w-0 pr-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 block">
+                  <FileImage className="w-3 h-3" /> Monthly Fee Receipt
+                </span>
+
+                {/* Verifying spinner */}
+                {(uploading || verifying) && (
+                  <div className="mt-2 flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                    <span className="w-5 h-5 rounded-full border-2 border-amber-300 border-t-amber-600 animate-spin shrink-0" />
+                    <div>
+                      <p className="text-xs font-extrabold text-amber-700">
+                        {uploading ? 'Uploading receipt…' : 'AI is verifying your receipt…'}
+                      </p>
+                      <p className="text-[10px] text-amber-500 mt-0.5">This takes a few seconds</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Verified + active */}
+                {!uploading && !verifying && isActive && (
+                  <div className="mt-2 flex items-start gap-3">
+                    {user.feeReceiptUrl && (
+                      <img src={user.feeReceiptUrl} alt="Receipt"
+                        className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-extrabold px-2.5 py-1 rounded-full">
+                        <ShieldCheck className="w-3 h-3" /> AI Verified
+                      </span>
+                      <div className="mt-1.5 space-y-0.5">
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          Amount: <span className="font-bold text-slate-700">{user.feeReceiptAmount}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          Paid: <span className="font-bold text-slate-700">{user.feeReceiptDate}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Active until: <span className="font-bold text-emerald-600">{expiryLabel}</span>
+                          {daysLeft !== null && daysLeft <= 7 && (
+                            <span className="text-amber-500 font-bold">({daysLeft}d left)</span>
+                          )}
+                        </p>
+                      </div>
+                      <button onClick={() => fileInputRef.current?.click()}
+                        className="mt-2 text-[10px] font-bold text-primary flex items-center gap-1 cursor-pointer">
+                        <RefreshCw className="w-3 h-3" /> Upload new receipt
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Verified but expired */}
+                {!uploading && !verifying && !isActive && isExpired && user.feeReceiptVerified && (
+                  <div className="mt-2">
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-2">
+                      <p className="text-[11px] font-extrabold text-red-600 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Receipt expired
+                      </p>
+                      <p className="text-[10px] text-red-400 mt-0.5">
+                        Previously paid {user.feeReceiptAmount} on {user.feeReceiptDate}.
+                        Pay RM25 on 1st–3rd of this month to renew.
+                      </p>
+                    </div>
+                    <button onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 bg-primary text-white font-extrabold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition cursor-pointer shadow-md shadow-primary/20">
+                      <Upload className="w-3.5 h-3.5" /> Upload new receipt
+                    </button>
+                  </div>
+                )}
+
+                {/* Rejected */}
+                {!uploading && !verifying && isRejected && (
+                  <div className="mt-2">
+                    <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-2">
+                      <p className="text-[11px] font-extrabold text-red-600 flex items-center gap-1.5 mb-1">
+                        <AlertTriangle className="w-3.5 h-3.5" /> Receipt rejected
+                      </p>
+                      <p className="text-[10px] text-red-500 leading-relaxed">{user.feeReceiptRejectReason}</p>
+                    </div>
+                    <button onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 bg-primary text-white font-extrabold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition cursor-pointer shadow-md shadow-primary/20">
+                      <Upload className="w-3.5 h-3.5" /> Try again
+                    </button>
+                  </div>
+                )}
+
+                {/* Uploaded but pending verification (e.g. network failed mid-verify, or page refreshed) */}
+                {!uploading && !verifying && hasReceipt && !user.feeReceiptVerified && !user.feeReceiptRejectReason && !isActive && (
+                  <div className="mt-2">
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-2 flex items-start gap-2">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[11px] font-extrabold text-amber-700">Awaiting admin approval</p>
+                        <p className="text-[10px] text-amber-500 mt-0.5 leading-relaxed">
+                          Your receipt is under review. You will be notified once approved. If rejected, re-upload a clearer image.
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 bg-primary text-white font-extrabold text-xs px-4 py-2.5 rounded-xl active:scale-95 transition cursor-pointer shadow-md shadow-primary/20">
+                      <Upload className="w-3.5 h-3.5" /> Re-upload receipt
+                    </button>
+                  </div>
+                )}
+
+                {/* Not uploaded yet */}
+                {!uploading && !verifying && !hasReceipt && !isRejected && (
+                  <div>
+                    <button onClick={() => fileInputRef.current?.click()}
+                      className="mt-2 flex items-center gap-2 bg-red-50 border border-dashed border-red-200 rounded-xl px-4 py-3 text-xs font-bold text-red-400 hover:border-red-400 transition active:scale-95 cursor-pointer w-full">
+                      <Upload className="w-4 h-4" />
+                      Upload receipt to activate account
+                    </button>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1.5 pl-1">
+                      JPG / PNG · Maybank, CIMB, DuitNow, TNG accepted
+                    </p>
+                  </div>
+                )}
+
+                {/* Verify error message */}
+                {verifyMsg && !uploading && !verifying && (
+                  <p className="mt-2 text-[10px] font-bold text-red-500 bg-red-50 px-3 py-2 rounded-xl">
+                    {verifyMsg}
+                  </p>
+                )}
+
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                  className="hidden" onChange={handleReceiptUpload} />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Save button */}
+        {editMode && (
+          <div className="pt-4 flex flex-col gap-2">
+            {saveError && <p className="text-[10px] text-danger font-bold text-center">{saveError}</p>}
+            <button onClick={handleSave} disabled={saving}
+              className="w-full bg-primary hover:bg-primary-hover active:scale-[0.99] disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold py-3 rounded-xl shadow-md shadow-primary/20 transition flex items-center justify-center gap-2 cursor-pointer">
+              {saving
+                ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                : 'Save Changes'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 4. ACTIONS MENU */}
-      <div className="bg-white border border-slate-100 rounded-3xl p-2.5 shadow-sm flex flex-col gap-1">
-        
-        <button 
-          onClick={() => alert('Campus Information Guide: gerak connects college dining stalls, robe booking portals, and shuttle systems. Developed by Universiti Perdana developers.')}
-          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition text-left"
-        >
+      {/* ── ACTIONS ── */}
+      <div className="mx-5 mt-5 bg-white border border-slate-100 rounded-3xl p-2.5 shadow-sm flex flex-col gap-1">
+        <button onClick={() => alert('Campus Information Guide: gerak connects robe booking portals and shuttle systems.')}
+          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition text-left cursor-pointer">
           <div className="flex items-center gap-3">
-            <div className="text-slate-400"><HelpCircle className="w-4 h-4" /></div>
-            <span className="text-xs font-extrabold text-slate-700">Help & User Guide</span>
+            <HelpCircle className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-extrabold text-slate-700">Help &amp; User Guide</span>
           </div>
-          <span className="text-slate-300 text-xs font-bold">➔</span>
+          <ChevronRight className="w-4 h-4 text-slate-300" />
         </button>
-
-        <button 
-          onClick={() => alert('Simulated Terms of Campus Services')}
-          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition text-left border-t border-slate-50"
-        >
+        <button onClick={() => alert('Simulated Terms of Campus Services')}
+          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition text-left border-t border-slate-50 cursor-pointer">
           <div className="flex items-center gap-3">
-            <div className="text-slate-400"><Heart className="w-4 h-4" /></div>
-            <span className="text-xs font-extrabold text-slate-700">Privacy & Terms</span>
+            <Heart className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-extrabold text-slate-700">Privacy &amp; Terms</span>
           </div>
-          <span className="text-slate-300 text-xs font-bold">➔</span>
+          <ChevronRight className="w-4 h-4 text-slate-300" />
         </button>
-
-        <button 
-          onClick={logout}
-          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-danger/5 hover:text-danger text-slate-600 transition text-left border-t border-slate-50 group"
-        >
+        <button onClick={logout}
+          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-danger/5 transition text-left border-t border-slate-50 group cursor-pointer">
           <div className="flex items-center gap-3">
-            <div className="text-slate-400 group-hover:text-danger"><LogOut className="w-4 h-4" /></div>
-            <span className="text-xs font-extrabold">Log Out Session</span>
+            <LogOut className="w-4 h-4 text-slate-400 group-hover:text-danger" />
+            <span className="text-xs font-extrabold text-slate-700 group-hover:text-danger">Log Out Session</span>
           </div>
-          <span className="text-slate-300 group-hover:text-danger text-xs font-bold">➔</span>
+          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-danger" />
         </button>
-
       </div>
 
+      <div className="mt-8 text-center">
+        <button onClick={handleDeleteAccount}
+          className="text-xs font-extrabold text-danger uppercase tracking-widest hover:underline active:scale-95 transition cursor-pointer">
+          Delete Account
+        </button>
+      </div>
     </div>
   );
 };

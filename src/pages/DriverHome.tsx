@@ -1,0 +1,1153 @@
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
+import {
+  Car, MapPin, Navigation, Users, Clock,
+  CheckCircle2, RefreshCw, Briefcase,
+  ListOrdered, XCircle, ShieldOff, KeyRound,
+  ChevronLeft, ChevronRight, Settings, CalendarDays,
+  Package, Ban, Unlock, Hash, X,
+} from 'lucide-react';
+import { WaIcon, toWa } from '../lib/whatsapp';
+
+interface RentalVehicle {
+  owner_id: string;
+  car_type: string;
+  plate_no: string;
+  color: string;
+  seats: number;
+  price_hour: number;
+  description: string;
+}
+
+interface RentalBookingOwner {
+  id: string;
+  booking_no: number;
+  customer_name: string;
+  customer_phone: string;
+  date: string;
+  start_hour: number;
+  duration: number;
+  persons: number;
+  total_price: number;
+  status: string;
+  notes: string;
+  created_at: string;
+}
+
+interface RentalBlock {
+  date: string;
+  blocked_hours: number[];
+}
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const fmt12 = (h: number) => h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+const toDateStr = (d: Date) => d.toISOString().split('T')[0];
+const todayStr  = () => toDateStr(new Date());
+
+interface RideOrder {
+  id: string;
+  customer_name: string;
+  campus: string;
+  date: string;
+  time: string;
+  pickup: string;
+  destination: string;
+  passengers: number;
+  contact: string;
+  fare: string;
+  night_charge: number;
+  notes: string;
+  status: string;
+  driver_id: string | null;
+  driver_name: string | null;
+  created_at: string;
+}
+
+type DriverTab = 'pool' | 'my-jobs' | 'rental';
+
+const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
+  accepted:    { label: 'Accepted',    cls: 'bg-blue-50 text-blue-600 border-blue-200' },
+  in_progress: { label: 'In Progress', cls: 'bg-indigo-50 text-indigo-600 border-indigo-200' },
+  completed:   { label: 'Completed',   cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+  cancelled:   { label: 'Cancelled',   cls: 'bg-slate-100 text-slate-400 border-slate-200' },
+};
+
+export const DriverHome: React.FC = () => {
+  const { user } = useApp();
+
+  const [activeTab, setActiveTab]           = useState<DriverTab>(!user.canDrive && user.canRent ? 'rental' : 'pool');
+  const [pendingOrders, setPendingOrders]   = useState<RideOrder[]>([]);
+  const [myJob, setMyJob]                   = useState<RideOrder | null>(null);
+  const [myHistory, setMyHistory]           = useState<RideOrder[]>([]);
+  const [accepting, setAccepting]           = useState<string | null>(null);
+  const [updating, setUpdating]             = useState(false);
+  const [toast, setToast]                   = useState('');
+  const [loading, setLoading]               = useState(true);
+  const [newPing, setNewPing]               = useState(false);
+  const prevPoolCount                       = useRef(0);
+
+  // ── Rental state ──────────────────────────────────────────────────────────
+  const [rentalVehicle,   setRentalVehicle]   = useState<RentalVehicle | null>(null);
+  const [rentalBookings,  setRentalBookings]  = useState<RentalBookingOwner[]>([]);
+  const [rentalBlocks,    setRentalBlocks]    = useState<RentalBlock[]>([]);
+  const [rentalLoading,   setRentalLoading]   = useState(false);
+  const [rentalSubView,   setRentalSubView]   = useState<'orders' | 'schedule' | 'vehicle'>('orders');
+  const [rentalMonth, setRentalMonth]         = useState(() => {
+    const n = new Date(); return { year: n.getFullYear(), month: n.getMonth() };
+  });
+  const [scheduleDate,    setScheduleDate]    = useState('');
+  const [vehicleForm,          setVehicleForm]          = useState<Partial<RentalVehicle>>({});
+  const [vehicleSaving,        setVehicleSaving]        = useState(false);
+  const [pendingRentals,       setPendingRentals]       = useState(0);
+  const [rentalReceiptBk,      setRentalReceiptBk]      = useState<RentalBookingOwner | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  };
+
+  const isDriverActive = user.feeReceiptVerified && !!user.feeReceiptExpiry && new Date(user.feeReceiptExpiry) > new Date();
+
+  // ── Rental helpers ────────────────────────────────────────────────────────
+  const loadRentalData = useCallback(async () => {
+    if (!user.canRent) return;
+    setRentalLoading(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const uid = authUser?.id ?? '';
+
+    const [{ data: vehicle }, { data: bookings }, { data: blocks }] = await Promise.all([
+      supabase.from('rental_vehicles').select('*').eq('owner_id', uid).maybeSingle(),
+      supabase.from('rental_bookings')
+        .select('id, booking_no, date, start_hour, duration, persons, total_price, status, notes, created_at, customer_id')
+        .eq('owner_id', uid)
+        .order('date', { ascending: false })
+        .limit(50),
+      supabase.from('rental_blocks').select('date, blocked_hours').eq('owner_id', uid),
+    ]);
+
+    // Enrich bookings with customer name/phone
+    let enriched: RentalBookingOwner[] = [];
+    if (bookings?.length) {
+      const customerIds = [...new Set(bookings.map(b => b.customer_id))];
+      const { data: profiles } = await supabase
+        .from('profiles').select('id, name, phone').in('id', customerIds);
+      enriched = bookings.map(b => {
+        const p = profiles?.find(p => p.id === b.customer_id);
+        return { ...b, customer_name: p?.name ?? '—', customer_phone: p?.phone ?? '—' };
+      });
+    }
+
+    setRentalVehicle(vehicle ?? null);
+    setVehicleForm(vehicle ?? { car_type: '', plate_no: '', color: '', seats: 5, price_hour: 10, description: '' });
+    setRentalBookings(enriched);
+    setRentalBlocks(blocks ?? []);
+    setPendingRentals(enriched.filter(b => b.status === 'pending').length);
+    setRentalLoading(false);
+  }, [user.canRent]);
+
+  const toggleHourBlock = async (dateStr: string, hour: number) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const uid = authUser?.id ?? '';
+    const existing = rentalBlocks.find(b => b.date === dateStr);
+    let newHours: number[];
+    if (!existing) {
+      newHours = [hour];
+    } else if (existing.blocked_hours.length === 0) {
+      // full-day block → unblock all except this one
+      newHours = HOURS.filter(h => h !== hour);
+    } else if (existing.blocked_hours.includes(hour)) {
+      newHours = existing.blocked_hours.filter(h => h !== hour);
+    } else {
+      newHours = [...existing.blocked_hours, hour];
+    }
+    await supabase.from('rental_blocks').upsert({ owner_id: uid, date: dateStr, blocked_hours: newHours });
+    loadRentalData();
+  };
+
+  const blockFullDay = async (dateStr: string, block: boolean) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const uid = authUser?.id ?? '';
+    if (block) {
+      await supabase.from('rental_blocks').upsert({ owner_id: uid, date: dateStr, blocked_hours: [] });
+    } else {
+      await supabase.from('rental_blocks').delete().eq('owner_id', uid).eq('date', dateStr);
+    }
+    loadRentalData();
+  };
+
+  const updateBookingStatus = async (bookingId: string, status: string) => {
+    await supabase.from('rental_bookings').update({ status }).eq('id', bookingId);
+    loadRentalData();
+  };
+
+  const saveVehicle = async () => {
+    if (!vehicleForm.car_type || !vehicleForm.plate_no) { showToast('Fill in car type and plate number.'); return; }
+    setVehicleSaving(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const uid = authUser?.id ?? '';
+    await supabase.from('rental_vehicles').upsert({
+      owner_id: uid,
+      car_type:    vehicleForm.car_type    ?? '',
+      plate_no:    vehicleForm.plate_no    ?? '',
+      color:       vehicleForm.color       ?? '',
+      seats:       vehicleForm.seats       ?? 5,
+      price_hour:  vehicleForm.price_hour  ?? 10,
+      description: vehicleForm.description ?? '',
+      updated_at:  new Date().toISOString(),
+    });
+    setVehicleSaving(false);
+    showToast('Vehicle info saved!');
+    loadRentalData();
+  };
+
+  // Rental calendar helpers
+  const rentalCalDays = (): (string | null)[] => {
+    const { year, month } = rentalMonth;
+    const first = new Date(year, month, 1).getDay();
+    const days  = new Date(year, month + 1, 0).getDate();
+    const cells: (string | null)[] = Array(first).fill(null);
+    for (let d = 1; d <= days; d++) {
+      cells.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`);
+    }
+    return cells;
+  };
+  const rentalMonthLabel = () =>
+    new Date(rentalMonth.year, rentalMonth.month, 1).toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+  const isFullDayBlocked = (dateStr: string) => {
+    const b = rentalBlocks.find(b => b.date === dateStr);
+    return !!b && b.blocked_hours.length === 0;
+  };
+  const blockedHoursOn = (dateStr: string): number[] => {
+    const b = rentalBlocks.find(b => b.date === dateStr);
+    if (!b) return [];
+    if (b.blocked_hours.length === 0) return HOURS;
+    return b.blocked_hours;
+  };
+
+  const campusFilter = user.role === 'superadmin'
+    ? null
+    : user.campus.charAt(0).toUpperCase() + user.campus.slice(1).toLowerCase();
+
+  const loadOrders = useCallback(async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const uid = authUser?.id ?? '';
+
+    // Pool: pending orders for this campus, sorted by scheduled date+time (FIFO)
+    let pendingQ = supabase
+      .from('ride_orders')
+      .select('*')
+      .eq('status', 'pending')
+      .order('date', { ascending: true })
+      .order('time', { ascending: true });
+    if (campusFilter) pendingQ = pendingQ.eq('campus', campusFilter);
+    const { data: pending } = await pendingQ;
+
+    // Active job (accepted or in_progress)
+    const { data: mine } = await supabase
+      .from('ride_orders')
+      .select('*')
+      .eq('driver_id', uid)
+      .in('status', ['accepted', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Full driver history (completed + cancelled + accepted/in_progress for context)
+    const { data: history } = await supabase
+      .from('ride_orders')
+      .select('*')
+      .eq('driver_id', uid)
+      .in('status', ['completed', 'cancelled', 'accepted', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    const pool = pending ?? [];
+
+    // Ping animation when new orders arrive in pool
+    if (pool.length > prevPoolCount.current && prevPoolCount.current >= 0) {
+      setNewPing(true);
+      setTimeout(() => setNewPing(false), 2000);
+    }
+    prevPoolCount.current = pool.length;
+
+    setPendingOrders(pool);
+    setMyJob(mine ?? null);
+    setMyHistory((history ?? []).filter(o => !(mine && o.id === mine.id)));
+    setLoading(false);
+  }, [campusFilter]);
+
+  useEffect(() => {
+    if (!user.canDrive) { setLoading(false); return; }
+    loadOrders();
+    const channel = supabase
+      .channel('ride_orders_driver')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ride_orders' }, loadOrders)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadOrders, user.canDrive]);
+
+  useEffect(() => {
+    if (!user.canRent) return;
+    loadRentalData();
+    const channel = supabase
+      .channel('rental_bookings_owner')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rental_bookings' }, loadRentalData)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user.canRent, loadRentalData]);
+
+  const handleAccept = async (orderId: string) => {
+    setAccepting(orderId);
+    const { data, error } = await supabase.rpc('accept_ride_order', { p_order_id: orderId });
+    setAccepting(null);
+    if (error || !data?.success) {
+      showToast(data?.error ?? 'Failed to accept — try again.');
+    } else {
+      showToast('Job accepted! Check My Jobs tab.');
+      setActiveTab('my-jobs');
+      loadOrders();
+    }
+  };
+
+  const handleStatusUpdate = async (orderId: string, status: string) => {
+    setUpdating(true);
+    await supabase.rpc('update_ride_status', { p_order_id: orderId, p_status: status });
+    setUpdating(false);
+    if (status === 'completed') showToast('Trip completed!');
+    loadOrders();
+  };
+
+  const fmt = (order: RideOrder) =>
+    order.fare === 'TBC' ? 'TBC' : `RM ${(Number(order.fare) + order.night_charge).toFixed(2)}`;
+
+  // ── Suspended guard ──────────────────────────────────────────────────────────
+  if (user.status === 'inactive') {
+    return (
+      <div className="flex-grow bg-slate-50 flex flex-col items-center justify-center px-8 gap-4 animate-fade-in">
+        <div className="w-16 h-16 rounded-full bg-red-50 border-2 border-red-100 flex items-center justify-center">
+          <Car className="w-7 h-7 text-red-300" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-black text-slate-800">Account Suspended</p>
+          <p className="text-xs text-slate-400 font-semibold mt-1 leading-relaxed">
+            Your driver account has been suspended.<br />Please contact your admin to reactivate.
+          </p>
+        </div>
+        <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-center">
+          <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Gerak ID</p>
+          <p className="text-sm font-black text-red-600 mt-0.5">{user.gerakId}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+  <>
+    <div className="flex-grow bg-slate-50 overflow-y-auto no-scrollbar pb-6 flex flex-col animate-fade-in">
+
+      {/* ── Header ── */}
+      <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-black text-slate-800 m-0">Driver Hub</h2>
+            <span className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-600 text-[9px] font-extrabold px-2 py-0.5 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              LIVE
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+            {user.name} · {user.gerakId} · UMPSA {user.campus}
+          </p>
+        </div>
+        <button
+          onClick={() => activeTab === 'rental' ? loadRentalData() : loadOrders()}
+          className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-primary transition active:scale-90"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-16 left-4 right-4 z-50 bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg text-center">
+          {toast}
+        </div>
+      )}
+
+      {/* ── Tab Switcher ── */}
+      <div className="px-4 mb-1">
+        <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
+
+          {/* Pool tab — only if can_drive */}
+          {user.canDrive && (
+            <button
+              onClick={() => setActiveTab('pool')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition relative ${
+                activeTab === 'pool' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              <ListOrdered className="w-3.5 h-3.5" />
+              Job Pool
+              {pendingOrders.length > 0 && (
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                  activeTab === 'pool'
+                    ? 'bg-white/25 text-white'
+                    : `bg-primary text-white ${newPing ? 'animate-bounce' : ''}`
+                }`}>
+                  {pendingOrders.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* My Jobs tab — only if can_drive */}
+          {user.canDrive && (
+            <button
+              onClick={() => setActiveTab('my-jobs')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition relative ${
+                activeTab === 'my-jobs' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              My Jobs
+              {myJob && (
+                <span className={`w-2 h-2 rounded-full ${
+                  myJob.status === 'in_progress' ? 'bg-blue-400' : 'bg-emerald-400'
+                } ${activeTab === 'my-jobs' ? 'bg-white' : ''} animate-pulse`} />
+              )}
+            </button>
+          )}
+
+          {/* Rental tab — only if can_rent */}
+          {user.canRent && (
+            <button
+              onClick={() => setActiveTab('rental')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition relative ${
+                activeTab === 'rental' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              Rental
+              {pendingRentals > 0 && (
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                  activeTab === 'rental' ? 'bg-white/25 text-white' : 'bg-amber-500 text-white'
+                }`}>
+                  {pendingRentals}
+                </span>
+              )}
+            </button>
+          )}
+
+        </div>
+      </div>
+
+      {/* ── Loading ── */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center py-16">
+          <span className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          TAB 1: JOB POOL
+      ══════════════════════════════════════════ */}
+      {!loading && activeTab === 'pool' && (
+        <div className="px-4 pt-2 flex flex-col gap-3">
+
+          {/* Inactive driver lock banner */}
+          {!isDriverActive && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
+              <ShieldOff className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-extrabold text-red-600">Account inactive — cannot accept jobs</p>
+                <p className="text-[10px] text-red-400 font-medium mt-0.5 leading-relaxed">
+                  Upload your monthly fee receipt in <strong>Profile</strong> to activate your account.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {myJob && isDriverActive && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+              <p className="text-[11px] font-bold text-amber-700">
+                You have an active trip. Complete it before accepting a new job.
+              </p>
+            </div>
+          )}
+
+          {pendingOrders.length === 0 ? (
+            <div className="bg-white border border-slate-100 rounded-3xl p-10 shadow-sm flex flex-col items-center gap-3 text-center">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center">
+                  <Car className="w-7 h-7 text-slate-300" />
+                </div>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-700">Queue is clear</p>
+                <p className="text-[11px] text-slate-400 font-semibold mt-1 leading-relaxed">
+                  New orders appear here instantly,<br />sorted by booking time.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-100 rounded-full px-3 py-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-extrabold text-emerald-600">Connected · UMPSA {user.campus}</span>
+              </div>
+            </div>
+          ) : (
+            pendingOrders.map((order, idx) => (
+              <div key={order.id} className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
+
+                {/* Queue position strip */}
+                <div className="bg-slate-50 border-b border-slate-100 px-4 py-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-primary text-white text-[10px] font-extrabold flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                      {idx === 0 ? 'Next in queue' : `Queue position ${idx + 1}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-blue-600 font-extrabold">
+                    <Clock className="w-3 h-3" />
+                    {order.date} · {order.time}
+                  </div>
+                </div>
+
+                {/* Customer + fare */}
+                <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-800">{order.customer_name}</p>
+                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5 flex items-center gap-1.5">
+                      <Users className="w-3 h-3" /> {order.passengers} pax
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-lg font-black leading-tight ${order.fare === 'TBC' ? 'text-slate-400' : 'text-slate-800'}`}>
+                      {fmt(order)}
+                    </p>
+                    {order.night_charge > 0 && (
+                      <p className="text-[9px] text-amber-500 font-bold">+RM{order.night_charge} night</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Route */}
+                <div className="mx-4 mb-3 bg-slate-50 rounded-2xl px-4 py-3 flex flex-col gap-2">
+                  <div className="flex items-start gap-2.5">
+                    <div className="flex flex-col items-center gap-0.5 mt-0.5 shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <div className="w-px h-4 bg-slate-200" />
+                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                    </div>
+                    <div className="flex flex-col gap-2 flex-1 min-w-0">
+                      <div>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Pick-up</p>
+                        <p className="text-xs font-extrabold text-slate-700 leading-tight">{order.pickup}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Drop-off</p>
+                        <p className="text-xs font-extrabold text-slate-700 leading-tight">{order.destination}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact — hidden when driver is inactive */}
+                {isDriverActive && (
+                  <div className="mx-4 mb-3 flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
+                    <a
+                      href={`https://wa.me/${order.contact.replace(/\D/g,'').replace(/^0/,'60')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 bg-[#25D366]/10 text-[#25D366] font-extrabold px-3 py-1.5 rounded-full text-[10px] active:scale-95 transition"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <WaIcon className="w-3 h-3" /> {order.contact}
+                    </a>
+                  </div>
+                )}
+
+                {order.notes && (
+                  <p className="mx-4 mb-3 text-[10px] text-slate-500 italic bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    Remark: "{order.notes}"
+                  </p>
+                )}
+
+                {/* Accept */}
+                <div className="px-4 pb-4">
+                  <button
+                    onClick={() => isDriverActive && handleAccept(order.id)}
+                    disabled={!isDriverActive || !!accepting || !!myJob}
+                    className="w-full bg-primary hover:bg-primary-hover text-white font-extrabold text-xs py-3 rounded-2xl transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-primary/20 flex items-center justify-center gap-2"
+                  >
+                    {accepting === order.id
+                      ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      : !isDriverActive
+                        ? <><ShieldOff className="w-3.5 h-3.5" /> Activate account to accept</>
+                        : myJob
+                          ? 'Finish current trip first'
+                          : <><Briefcase className="w-3.5 h-3.5" /> Accept Job</>}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          TAB 2: MY JOBS
+      ══════════════════════════════════════════ */}
+      {!loading && activeTab === 'my-jobs' && (
+        <div className="px-4 pt-2 flex flex-col gap-4">
+
+          {/* ── Active job ── */}
+          {myJob ? (
+            <div className="flex flex-col gap-3">
+              <div className={`rounded-2xl px-4 py-2.5 flex items-center justify-between ${
+                myJob.status === 'in_progress' ? 'bg-blue-600' : 'bg-emerald-600'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Car className="w-4 h-4 text-white opacity-80" />
+                  <span className="text-white text-xs font-extrabold uppercase tracking-wide">
+                    {myJob.status === 'in_progress' ? 'Trip In Progress' : 'Job Accepted'}
+                  </span>
+                </div>
+                <span className="text-white/70 text-[10px] font-bold">{myJob.date} · {myJob.time}</span>
+              </div>
+
+              <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
+                <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Customer</p>
+                    <p className="text-lg font-black text-slate-800 mt-0.5 leading-tight">{myJob.customer_name}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                      <Users className="w-3 h-3" /> {myJob.passengers} passenger{myJob.passengers > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fare</p>
+                    <p className="text-xl font-black text-slate-800 mt-0.5">{fmt(myJob)}</p>
+                    {myJob.night_charge > 0 && (
+                      <p className="text-[9px] text-amber-500 font-bold mt-0.5">Night +RM{myJob.night_charge}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mx-4 mb-4 bg-slate-50 rounded-2xl px-4 py-3 flex flex-col gap-2.5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex flex-col items-center gap-1 mt-0.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+                      <div className="w-0.5 h-5 bg-slate-200" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                    </div>
+                    <div className="flex flex-col gap-2.5 flex-1 min-w-0">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Pickup</p>
+                        <p className="text-xs font-extrabold text-slate-700 leading-tight">{myJob.pickup}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Destination</p>
+                        <p className="text-xs font-extrabold text-slate-700 leading-tight">{myJob.destination}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {myJob.notes && (
+                  <p className="mx-4 mb-3 text-[10px] text-slate-500 italic bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                    Remark: "{myJob.notes}"
+                  </p>
+                )}
+
+                {/* Single action row: primary action + WhatsApp + cancel */}
+                <div className="px-4 pb-5 flex gap-2">
+
+                  {/* Primary — Start Trip or Complete Trip */}
+                  {myJob.status === 'accepted' && (
+                    <button
+                      onClick={() => handleStatusUpdate(myJob.id, 'in_progress')}
+                      disabled={updating}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs py-3 rounded-2xl transition active:scale-95 disabled:opacity-50 shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5"
+                    >
+                      {updating
+                        ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        : <><Car className="w-3.5 h-3.5" /> Start Trip</>}
+                    </button>
+                  )}
+                  {myJob.status === 'in_progress' && (
+                    <button
+                      onClick={() => handleStatusUpdate(myJob.id, 'completed')}
+                      disabled={updating}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 rounded-2xl transition active:scale-95 disabled:opacity-50 shadow-md shadow-emerald-500/25 flex items-center justify-center gap-1.5"
+                    >
+                      {updating
+                        ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        : <><CheckCircle2 className="w-3.5 h-3.5" /> Complete Trip</>}
+                    </button>
+                  )}
+
+                  {/* WhatsApp */}
+                  <a
+                    href={`https://wa.me/${myJob.contact.replace(/\D/g,'').replace(/^0/,'60')}?text=${encodeURIComponent(`Hi, I'm your Gerak driver. I've accepted your ride on ${myJob.date} at ${myJob.time}. On my way! 🚗`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 bg-[#25D366] text-white font-extrabold text-xs px-3 py-3 rounded-2xl active:scale-95 transition shadow-md shrink-0"
+                  >
+                    <WaIcon className="w-4 h-4" />
+                    WA
+                  </a>
+
+                  {/* Cancel — only before trip starts */}
+                  {myJob.status !== 'in_progress' && (
+                    <button
+                      onClick={() => handleStatusUpdate(myJob.id, 'cancelled')}
+                      disabled={updating}
+                      className="flex items-center justify-center gap-1 bg-red-50 border border-red-100 text-red-500 font-extrabold text-xs px-3 py-3 rounded-2xl transition active:scale-95 disabled:opacity-50 shrink-0"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-100/60 border border-slate-200/60 rounded-2xl px-4 py-3 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-slate-400 shrink-0" />
+              <p className="text-[11px] font-semibold text-slate-500">No active trip right now. Accept a job from the Pool tab.</p>
+            </div>
+          )}
+
+          {/* ── History ── */}
+          {myHistory.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pt-1">
+                <Clock className="w-3.5 h-3.5" /> Trip History
+              </h3>
+
+              {myHistory.map(order => {
+                const st = HISTORY_STATUS[order.status] ?? HISTORY_STATUS.cancelled;
+                return (
+                  <div key={order.id} className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
+
+                    {/* Header row */}
+                    <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs font-black text-slate-800 truncate">{order.customer_name}</p>
+                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${st.cls}`}>
+                            {st.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {order.date} · {order.time} &nbsp;·&nbsp;
+                          <Users className="w-3 h-3" /> {order.passengers} pax
+                        </p>
+                      </div>
+                      <p className={`text-sm font-black shrink-0 ${order.status === 'completed' ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        {fmt(order)}
+                      </p>
+                    </div>
+
+                    {/* Route mini */}
+                    <div className="mx-4 mb-4 bg-slate-50 rounded-2xl px-4 py-3 flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2 text-xs">
+                        <MapPin className="w-3 h-3 text-blue-400 shrink-0" />
+                        <span className="font-semibold text-slate-500 truncate">{order.pickup}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Navigation className="w-3 h-3 text-red-400 shrink-0" />
+                        <span className="font-semibold text-slate-500 truncate">{order.destination}</span>
+                      </div>
+                      {order.notes && (
+                        <p className="text-[10px] text-slate-400 italic mt-1">"{order.notes}"</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!myJob && myHistory.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
+                <Briefcase className="w-6 h-6 text-slate-300" />
+              </div>
+              <p className="text-sm font-black text-slate-600">No jobs yet</p>
+              <p className="text-xs text-slate-400 font-semibold">Your accepted and completed trips will appear here.</p>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════
+          TAB 3: RENTAL (owners only)
+      ══════════════════════════════════════════ */}
+      {!loading && activeTab === 'rental' && user.canRent && (
+        <div className="px-4 pt-2 flex flex-col gap-3">
+
+          {/* Sub-view switcher */}
+          <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
+            {(['orders', 'schedule', 'vehicle'] as const).map(v => (
+              <button key={v} onClick={() => setRentalSubView(v)}
+                className={`flex-1 py-2 rounded-xl text-[10px] font-extrabold transition capitalize ${
+                  rentalSubView === v ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-400'
+                }`}>
+                {v === 'orders' ? <><Package className="w-3 h-3 inline mr-1" />Orders</> :
+                 v === 'schedule' ? <><CalendarDays className="w-3 h-3 inline mr-1" />Schedule</> :
+                 <><Settings className="w-3 h-3 inline mr-1" />Vehicle</>}
+              </button>
+            ))}
+          </div>
+
+          {rentalLoading && (
+            <div className="flex justify-center py-10">
+              <span className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-amber-500 animate-spin" />
+            </div>
+          )}
+
+          {/* ── ORDERS sub-view ── */}
+          {!rentalLoading && rentalSubView === 'orders' && (
+            <div className="flex flex-col gap-3">
+              {rentalBookings.length === 0 ? (
+                <div className="bg-white border border-slate-100 rounded-3xl p-8 text-center flex flex-col items-center gap-2">
+                  <Package className="w-8 h-8 text-slate-200" />
+                  <p className="text-xs text-slate-400 font-semibold">No rental bookings yet.</p>
+                </div>
+              ) : rentalBookings.map(bk => {
+                const statusStyle: Record<string, string> = {
+                  pending:   'bg-amber-50 text-amber-700 border-amber-200',
+                  confirmed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                  cancelled: 'bg-red-50 text-red-500 border-red-200',
+                  completed: 'bg-slate-100 text-slate-500 border-slate-200',
+                };
+                return (
+                  <div key={bk.id} onClick={() => setRentalReceiptBk(bk)}
+                    className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden cursor-pointer active:scale-[0.99] transition">
+                    <div className="bg-slate-50 border-b border-slate-100 px-4 py-2 flex items-center justify-between">
+                      <p className="text-[10px] font-extrabold text-slate-500">{bk.date} · {fmt12(bk.start_hour)} – {fmt12(bk.start_hour + bk.duration)}</p>
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border uppercase ${statusStyle[bk.status] ?? statusStyle.pending}`}>
+                        {bk.status}
+                      </span>
+                    </div>
+                    <div className="px-4 py-3 flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-black text-slate-800">{bk.customer_name}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold">{bk.persons} pax · {bk.duration}h</p>
+                      </div>
+                      <p className="text-sm font-black text-amber-600">RM{Number(bk.total_price).toFixed(2)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── SCHEDULE sub-view ── */}
+          {!rentalLoading && rentalSubView === 'schedule' && (
+            <div className="flex flex-col gap-3">
+
+              {/* Calendar */}
+              <div className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <button onClick={() => setRentalMonth(m => {
+                    const d = new Date(m.year, m.month - 1, 1);
+                    return { year: d.getFullYear(), month: d.getMonth() };
+                  })} className="w-7 h-7 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <p className="text-xs font-extrabold text-slate-700">{rentalMonthLabel()}</p>
+                  <button onClick={() => setRentalMonth(m => {
+                    const d = new Date(m.year, m.month + 1, 1);
+                    return { year: d.getFullYear(), month: d.getMonth() };
+                  })} className="w-7 h-7 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 mb-1">
+                  {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+                    <div key={d} className="text-center text-[9px] font-extrabold text-slate-400">{d}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-0.5">
+                  {rentalCalDays().map((dateStr, i) => {
+                    if (!dateStr) return <div key={i} />;
+                    const isPast    = dateStr < todayStr();
+                    const isBlocked = isFullDayBlocked(dateStr);
+                    const isPicked  = dateStr === scheduleDate;
+                    return (
+                      <button key={dateStr} disabled={isPast}
+                        onClick={() => setScheduleDate(dateStr)}
+                        className={`aspect-square rounded-xl text-[10px] font-bold transition active:scale-90 ${
+                          isPicked   ? 'bg-amber-500 text-white font-extrabold' :
+                          isBlocked  ? 'bg-red-100 text-red-400' :
+                          isPast     ? 'text-slate-200 cursor-not-allowed' :
+                                       'text-slate-700 hover:bg-amber-50'
+                        }`}>
+                        {parseInt(dateStr.split('-')[2])}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-3 mt-3 text-[9px] font-bold text-slate-400">
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-100 inline-block" /> Blocked</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-500 inline-block" /> Selected</span>
+                </div>
+              </div>
+
+              {/* Hour-level controls for selected date */}
+              {scheduleDate && (
+                <div className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs font-extrabold text-slate-700">{scheduleDate}</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => blockFullDay(scheduleDate, true)}
+                        className="flex items-center gap-1 text-[10px] font-extrabold text-red-500 bg-red-50 border border-red-100 px-2.5 py-1.5 rounded-xl active:scale-95 transition">
+                        <Ban className="w-3 h-3" /> Block All
+                      </button>
+                      <button onClick={() => blockFullDay(scheduleDate, false)}
+                        className="flex items-center gap-1 text-[10px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1.5 rounded-xl active:scale-95 transition">
+                        <Unlock className="w-3 h-3" /> Open All
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {HOURS.map(h => {
+                      const blocked = blockedHoursOn(scheduleDate).includes(h);
+                      return (
+                        <button key={h} onClick={() => toggleHourBlock(scheduleDate, h)}
+                          className={`py-2 rounded-xl text-[10px] font-bold transition active:scale-95 ${
+                            blocked
+                              ? 'bg-red-100 text-red-500 border border-red-200'
+                              : 'bg-slate-50 text-slate-600 hover:bg-amber-50 hover:text-amber-700'
+                          }`}>
+                          {fmt12(h)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[9px] text-slate-400 font-semibold text-center mt-3">
+                    Tap a slot to toggle. Red = blocked from customers.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── VEHICLE sub-view ── */}
+          {!rentalLoading && rentalSubView === 'vehicle' && (
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
+              <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Vehicle Information</p>
+
+              {[
+                { label: 'Car Type / Model', key: 'car_type' as const, placeholder: 'e.g. Perodua Myvi' },
+                { label: 'Plate Number', key: 'plate_no' as const, placeholder: 'e.g. ABC 1234' },
+                { label: 'Color', key: 'color' as const, placeholder: 'e.g. Silver' },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key} className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">{label}</label>
+                  <input
+                    value={vehicleForm[key] as string ?? ''}
+                    onChange={e => setVehicleForm(f => ({ ...f, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-amber-400 transition"
+                  />
+                </div>
+              ))}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Seats</label>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setVehicleForm(f => ({ ...f, seats: Math.max(1, (f.seats ?? 5) - 1) }))}
+                      className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 font-black flex items-center justify-center active:scale-90">−</button>
+                    <span className="flex-1 text-center text-sm font-black text-slate-800">{vehicleForm.seats ?? 5}</span>
+                    <button onClick={() => setVehicleForm(f => ({ ...f, seats: Math.min(15, (f.seats ?? 5) + 1) }))}
+                      className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 font-black flex items-center justify-center active:scale-90">+</button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Price/Hour (RM)</label>
+                  <input
+                    type="number" min="1" step="0.50"
+                    value={vehicleForm.price_hour ?? 10}
+                    onChange={e => setVehicleForm(f => ({ ...f, price_hour: Number(e.target.value) }))}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-amber-400 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Description (optional)</label>
+                <textarea
+                  value={vehicleForm.description ?? ''}
+                  onChange={e => setVehicleForm(f => ({ ...f, description: e.target.value }))}
+                  rows={2}
+                  placeholder="Any details customers should know..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-700 focus:outline-none focus:border-amber-400 transition resize-none"
+                />
+              </div>
+
+              <button onClick={saveVehicle} disabled={vehicleSaving}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs py-3 rounded-2xl transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2">
+                {vehicleSaving
+                  ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  : <><CheckCircle2 className="w-4 h-4" /> Save Vehicle Info</>}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    {/* ── RENTAL BOOKING RECEIPT MODAL ── */}
+    {rentalReceiptBk && (() => {
+      const bk = rentalReceiptBk;
+      const statusStyle: Record<string, string> = {
+        pending:   'bg-amber-50 text-amber-700 border-amber-200',
+        confirmed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        cancelled: 'bg-red-50 text-red-500 border-red-200',
+        completed: 'bg-slate-100 text-slate-500 border-slate-200',
+      };
+      const priceHour = rentalVehicle?.price_hour ?? 0;
+      return (
+        <div className="fixed inset-0 z-50 flex items-end justify-center"
+          onClick={() => setRentalReceiptBk(null)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative w-full max-w-sm rounded-t-3xl bg-white overflow-hidden shadow-2xl animate-slide-up"
+            onClick={e => e.stopPropagation()}>
+
+            {/* Close handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-slate-200" />
+            </div>
+
+            {/* Receipt header */}
+            <div className="bg-amber-500 mx-4 mt-2 mb-0 rounded-2xl px-5 pt-4 pb-4 flex items-start justify-between">
+              <div>
+                <p className="text-[9px] font-extrabold text-amber-100 uppercase tracking-widest">Rental Booking</p>
+                <p className="text-lg font-black text-white leading-tight mt-0.5">
+                  {rentalVehicle?.car_type || 'Vehicle'}
+                </p>
+                <p className="text-[10px] text-amber-100 font-semibold">
+                  {rentalVehicle?.plate_no} · {rentalVehicle?.color}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full border uppercase ${statusStyle[bk.status] ?? statusStyle.pending}`}>
+                  {bk.status}
+                </span>
+                <button onClick={() => setRentalReceiptBk(null)}
+                  className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white active:scale-90 transition">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="px-4 py-4 flex flex-col gap-3 overflow-y-auto max-h-[65vh]">
+
+              {/* Date / Time / Duration */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-slate-50 rounded-2xl px-3 py-2.5 text-center">
+                  <p className="text-[9px] text-slate-400 font-bold mb-0.5">Date</p>
+                  <p className="text-[10px] font-extrabold text-slate-700 leading-tight">
+                    {new Date(bk.date + 'T00:00:00').toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-2xl px-3 py-2.5 text-center">
+                  <p className="text-[9px] text-slate-400 font-bold mb-0.5">Time</p>
+                  <p className="text-[10px] font-extrabold text-slate-700 leading-tight">
+                    {fmt12(bk.start_hour)}<br />
+                    <span className="text-[9px] text-slate-400">→ {fmt12(bk.start_hour + bk.duration)}</span>
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-2xl px-3 py-2.5 text-center">
+                  <p className="text-[9px] text-slate-400 font-bold mb-0.5">Duration</p>
+                  <p className="text-[10px] font-extrabold text-slate-700 leading-tight">{bk.duration} hr{bk.duration > 1 ? 's' : ''}</p>
+                </div>
+              </div>
+
+              {/* Customer info */}
+              <div className="bg-slate-50 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Customer</p>
+                  <p className="text-xs font-extrabold text-slate-800 truncate">{bk.customer_name}</p>
+                  <p className="text-[10px] text-slate-500 font-semibold">{bk.persons} pax</p>
+                </div>
+                {bk.customer_phone && bk.customer_phone !== '—' && (
+                  <a href={`https://wa.me/${toWa(bk.customer_phone)}`}
+                    target="_blank" rel="noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-extrabold px-3 py-2 rounded-xl transition active:scale-95 shrink-0">
+                    <WaIcon className="w-3 h-3" /> WhatsApp
+                  </a>
+                )}
+              </div>
+
+              {/* Price breakdown */}
+              <div className="flex flex-col gap-1.5 px-1">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-slate-400 font-semibold">Rate</span>
+                  <span className="font-bold text-slate-600">RM{Number(priceHour).toFixed(2)} / hour</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-slate-400 font-semibold">Duration</span>
+                  <span className="font-bold text-slate-600">{bk.duration} hour{bk.duration > 1 ? 's' : ''}</span>
+                </div>
+                <div className="mt-1 pt-2 border-t border-dashed border-slate-100 flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-700">Total</span>
+                  <span className="text-base font-black text-amber-500">RM{Number(bk.total_price).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {bk.notes && (
+                <div className="bg-slate-50 rounded-xl px-3 py-2">
+                  <p className="text-[9px] text-slate-400 font-bold mb-0.5">Note from customer</p>
+                  <p className="text-[10px] text-slate-500 italic">"{bk.notes}"</p>
+                </div>
+              )}
+
+              {/* Booking ref */}
+              <div className="flex items-center gap-1.5 px-1">
+                <Hash className="w-3 h-3 text-slate-300" />
+                <p className="text-[9px] text-slate-400 font-mono font-bold tracking-wider">{String(bk.booking_no).padStart(5, '0')}</p>
+                <span className="ml-auto text-[9px] text-slate-300 font-semibold">
+                  {new Date(bk.created_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+
+              {/* Action buttons */}
+              {bk.status === 'pending' && (
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => { updateBookingStatus(bk.id, 'confirmed'); setRentalReceiptBk(null); }}
+                    className="flex-1 bg-emerald-500 text-white text-xs font-extrabold py-3 rounded-2xl active:scale-95 transition">
+                    Confirm
+                  </button>
+                  <button onClick={() => { updateBookingStatus(bk.id, 'cancelled'); setRentalReceiptBk(null); }}
+                    className="flex-1 bg-red-50 border border-red-200 text-red-500 text-xs font-extrabold py-3 rounded-2xl active:scale-95 transition">
+                    Decline
+                  </button>
+                </div>
+              )}
+              {bk.status === 'confirmed' && (
+                <button onClick={() => { updateBookingStatus(bk.id, 'completed'); setRentalReceiptBk(null); }}
+                  className="w-full bg-slate-800 text-white text-xs font-extrabold py-3 rounded-2xl active:scale-95 transition">
+                  Mark Completed
+                </button>
+              )}
+
+              <div className="pb-2" />
+            </div>
+          </div>
+        </div>
+      );
+    })()}
+  </>
+  );
+};

@@ -5,7 +5,9 @@
       "WebSearch",
       "WebFetch(domain:www.npmjs.com)",
       "WebFetch(domain:github.com)",
-      "Bash(claude mcp *)"
+      "Bash(claude mcp *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const content=fs.readFileSync\\('.env.local','utf8'\\); console.log\\('BOM:', content.charCodeAt\\(0\\)===65279\\); console.log\\('Lines:', content.split\\('\\\\n'\\).map\\(l=>l.substring\\(0,40\\)\\)\\)\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

@@ -19,14 +19,38 @@ export interface JubahSheetRow {
 
 export async function submitJubahToSheets(data: JubahSheetRow): Promise<void> {
   try {
-    // no-cors because Google Apps Script doesn't handle CORS preflight.
-    // Content-Type text/plain avoids triggering a preflight OPTIONS request.
-    // The data still arrives and is written to the sheet.
     await fetch(SHEETS_WEBAPP_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ type: 'jubah', ...data }),
+    });
+  } catch (err) {
+    console.error('[GERAK] Google Sheets sync failed:', err);
+  }
+}
+
+export interface RideSheetRow {
+  campus: string;
+  date: string;
+  time: string;
+  pickup: string;
+  destination: string;
+  passengers: number;
+  contact: string;
+  fare: number | 'TBC';
+  nightCharge: number;
+  notes: string;
+  bookMode: 'quick' | 'map';
+}
+
+export async function submitRideToSheets(data: RideSheetRow): Promise<void> {
+  try {
+    await fetch(SHEETS_WEBAPP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ type: 'ride', ...data }),
     });
   } catch (err) {
     console.error('[GERAK] Google Sheets sync failed:', err);

@@ -9,7 +9,10 @@ create table public.profiles (
   name        text        not null,
   matric_no   text        not null,
   email       text        not null,
-  balance     numeric(10,2) not null default 10.00,
+  phone       text        not null default '',
+  university  text        not null default '',
+  campus      text        not null default '',
+  role        text        not null default 'customer',
   points      integer     not null default 100,
   created_at  timestamptz default now()
 );
@@ -79,64 +82,22 @@ create policy "Users can insert own jubah bookings"
 create policy "Users can update own jubah bookings"
   on public.jubah_bookings for update using (auth.uid() = user_id);
 
--- 4. Food orders
-create table public.food_orders (
-  id         text    primary key,
-  user_id    uuid    references auth.users(id) on delete cascade,
-  total      numeric(10,2) not null,
-  status     text    not null default 'completed',
-  created_at timestamptz default now()
-);
-
-alter table public.food_orders enable row level security;
-
-create policy "Users can read own food orders"
-  on public.food_orders for select using (auth.uid() = user_id);
-
-create policy "Users can insert own food orders"
-  on public.food_orders for insert with check (auth.uid() = user_id);
-
--- 5. Food order items
-create table public.food_order_items (
-  id         uuid  default gen_random_uuid() primary key,
-  order_id   text  references public.food_orders(id) on delete cascade,
-  item_name  text  not null,
-  price      numeric(10,2) not null,
-  quantity   integer not null,
-  stall_name text
-);
-
-alter table public.food_order_items enable row level security;
-
-create policy "Users can read own food order items"
-  on public.food_order_items for select
-  using (exists (
-    select 1 from public.food_orders
-    where food_orders.id = food_order_items.order_id
-    and food_orders.user_id = auth.uid()
-  ));
-
-create policy "Users can insert food order items"
-  on public.food_order_items for insert
-  with check (exists (
-    select 1 from public.food_orders
-    where food_orders.id = food_order_items.order_id
-    and food_orders.user_id = auth.uid()
-  ));
-
 -- ============================================================
 -- Trigger: auto-create profile row when a new user registers
 -- ============================================================
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, name, matric_no, email, balance, points)
+  insert into public.profiles (id, name, matric_no, email, phone, university, campus, role, points)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'name', 'Student'),
     coalesce(new.raw_user_meta_data->>'matric_no', ''),
     new.email,
-    10.00,
+    coalesce(new.raw_user_meta_data->>'phone', ''),
+    coalesce(new.raw_user_meta_data->>'university', ''),
+    coalesce(new.raw_user_meta_data->>'campus', ''),
+    'customer',
     100
   );
   return new;
@@ -146,3 +107,25 @@ $$ language plpgsql security definer;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ============================================================
+-- Unique phone enforcement (partial: ignores empty strings)
+-- ============================================================
+create unique index profiles_phone_unique
+  on public.profiles (phone)
+  where phone != '';
+
+-- ============================================================
+-- RPC: check phone availability (bypasses RLS — callable by anon)
+-- ============================================================
+create or replace function public.is_phone_taken(p_phone text)
+returns boolean
+language sql
+security definer
+as $$
+  select exists (
+    select 1 from public.profiles where phone = p_phone and phone != ''
+  );
+$$;
+
+grant execute on function public.is_phone_taken(text) to anon, authenticated;

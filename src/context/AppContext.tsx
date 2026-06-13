@@ -9,15 +9,34 @@ export type ActivePage =
   | 'dashboard'
   | 'transport'
   | 'jubah'
-  | 'food'
   | 'profile'
-  | 'notifications';
+  | 'notifications'
+  | 'driver-home'
+  | 'admin-home'
+  | 'my-orders'
+  | 'gerak-rental'
+  | 'academic-calendar';
 
 export interface UserSession {
   name: string;
   matricNo: string;
   email: string;
-  balance: number;
+  phone: string;
+  university: string;
+  campus: string;
+  gerakId: string;
+  role: string;
+  status: string;
+  vehicle: string;
+  plateNumber: string;
+  feeReceiptUrl: string;
+  feeReceiptVerified: boolean;
+  feeReceiptAmount: string;
+  feeReceiptDate: string;
+  feeReceiptExpiry: string;
+  feeReceiptRejectReason: string;
+  canDrive: boolean;
+  canRent: boolean;
   points: number;
   isLoggedIn: boolean;
 }
@@ -28,7 +47,7 @@ export interface NotificationItem {
   description: string;
   time: string;
   isRead: boolean;
-  type: 'system' | 'transport' | 'jubah' | 'food';
+  type: 'system' | 'transport' | 'jubah';
 }
 
 export interface DriverDetails {
@@ -71,24 +90,6 @@ export interface JubahBooking {
   returnTime?: string;
 }
 
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  stallName: string;
-  image?: string;
-}
-
-export interface FoodOrder {
-  id: string;
-  items: CartItem[];
-  total: number;
-  status: 'placed' | 'preparing' | 'delivering' | 'completed';
-  timeRemaining: number; // in seconds
-  date: string;
-}
-
 interface AppContextType {
   // Navigation & Session
   currentPage: ActivePage;
@@ -97,10 +98,10 @@ interface AppContextType {
   canGoBack: boolean;
   user: UserSession;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
-  register: (name: string, matricNo: string, email: string, password: string) => Promise<{ error: string | null }>;
+  register: (name: string, matricNo: string, email: string, password: string, phone: string, university: string, campus: string) => Promise<{ error: string | null }>;
   logout: () => void;
-  topUpWallet: (amount: number) => void;
-  deductWallet: (amount: number) => boolean;
+  updateProfile: (updates: { name?: string; matricNo?: string; email?: string; phone?: string; vehicle?: string; plateNumber?: string; feeReceiptUrl?: string }) => Promise<{ error: string | null }>;
+  refreshUserData: () => Promise<void>;
   addPoints: (points: number) => void;
 
   // Notifications
@@ -120,17 +121,6 @@ interface AppContextType {
   bookJubah: (fullName: string, icNumber: string, hpNumber: string, university: string, faculty: string, matricId: string, paymentMode: 'pickup' | 'postage', remark: 'Master' | 'PHD' | 'Degree' | 'Diploma', combinedFileName: string) => void;
   scheduleReturn: (method: 'self' | 'locker' | 'courier', date: string, time: string) => void;
   cancelJubahBooking: () => void;
-
-  // Food Delivery Module
-  cart: CartItem[];
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void;
-  removeFromCart: (id: string) => void;
-  updateCartQuantity: (id: string, quantity: number) => void;
-  clearCart: () => void;
-  activeFoodOrder: FoodOrder | null;
-  foodOrderHistory: FoodOrder[];
-  checkoutFoodOrder: () => boolean;
-  simulateFoodProgress: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -141,9 +131,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [pageHistory, setPageHistory] = useState<ActivePage[]>([]);
 
   const HISTORY_EXCLUDED: ActivePage[] = ['splash', 'login'];
+  const HOME_PAGES: ActivePage[] = ['dashboard', 'driver-home', 'admin-home'];
 
   const setCurrentPage = (page: ActivePage) => {
-    if (!HISTORY_EXCLUDED.includes(currentPage)) {
+    if (HOME_PAGES.includes(page)) {
+      setPageHistory([]);
+    } else if (!HISTORY_EXCLUDED.includes(currentPage)) {
       setPageHistory(prev => [...prev, currentPage]);
     }
     _setCurrentPage(page);
@@ -160,7 +153,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     name: '',
     matricNo: '',
     email: '',
-    balance: 0,
+    phone: '',
+    university: '',
+    campus: '',
+    gerakId: '',
+    role: 'customer',
+    status: 'active',
+    vehicle: '',
+    plateNumber: '',
+    feeReceiptUrl: '',
+    feeReceiptVerified: false,
+    feeReceiptAmount: '',
+    feeReceiptDate: '',
+    feeReceiptExpiry: '',
+    feeReceiptRejectReason: '',
+    canDrive: false,
+    canRent:  false,
     points: 0,
     isLoggedIn: false,
   });
@@ -170,7 +178,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     {
       id: '1',
       title: 'Welcome to gerak!',
-      description: 'Your Smart Campus Service Platform is ready. Check out Transport, Jubah, or Food services.',
+      description: 'Your Smart Campus Service Platform is ready. Check out Transport or Jubah services.',
       time: 'Just now',
       isRead: false,
       type: 'system',
@@ -209,22 +217,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Jubah Delivery
   const [jubahBooking, setJubahBooking] = useState<JubahBooking | null>(null);
 
-  // Food Delivery
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [activeFoodOrder, setActiveFoodOrder] = useState<FoodOrder | null>(null);
-  const [foodOrderHistory, setFoodOrderHistory] = useState<FoodOrder[]>([]);
-
   // Simulation Interval References
   const [rideTimer, setRideTimer] = useState<number | null>(null);
-  const [foodTimer, setFoodTimer] = useState<number | null>(null);
 
   // Clean timers on unmount
   useEffect(() => {
     return () => {
       if (rideTimer) clearInterval(rideTimer);
-      if (foodTimer) clearInterval(foodTimer);
     };
-  }, [rideTimer, foodTimer]);
+  }, [rideTimer]);
 
   // ── Supabase: restore session on app load ──────────────────────────
   useEffect(() => {
@@ -243,23 +244,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (data) {
+      const role = data.role ?? 'customer';
       setUser({
-        name: data.name,
-        matricNo: data.matric_no,
-        email: data.email,
-        balance: Number(data.balance),
-        points: data.points,
-        isLoggedIn: true,
+        name:          data.name,
+        matricNo:      data.matric_no,
+        email:         data.email,
+        phone:         data.phone           ?? '',
+        university:    data.university      ?? '',
+        campus:        data.campus          ?? '',
+        gerakId:       data.gerak_id        ?? '',
+        role,
+        status:        data.status          ?? 'active',
+        vehicle:                data.vehicle                  ?? '',
+        plateNumber:            data.plate_number             ?? '',
+        feeReceiptUrl:          data.fee_receipt_url          ?? '',
+        feeReceiptVerified:     data.fee_receipt_verified     ?? false,
+        feeReceiptAmount:       data.fee_receipt_amount       ?? '',
+        feeReceiptDate:         data.fee_receipt_date         ?? '',
+        feeReceiptExpiry:       data.fee_receipt_expiry       ?? '',
+        feeReceiptRejectReason: data.fee_receipt_reject_reason ?? '',
+        canDrive:               data.can_drive ?? (data.role === 'driver'),
+        canRent:                data.can_rent  ?? false,
+        points:                 data.points,
+        isLoggedIn:             true,
       });
       setPageHistory([]);
-      _setCurrentPage('dashboard');
+      if (role === 'driver') {
+        _setCurrentPage('driver-home');
+        // ── Fee expiry reminder (once per session) ───────────────
+        const expiry    = data.fee_receipt_expiry ? new Date(data.fee_receipt_expiry) : null;
+        const verified  = data.fee_receipt_verified ?? false;
+        const sessionKey = `gerak_reminder_${userId}`;
+        const today      = new Date().toDateString();
+        if (expiry && verified && localStorage.getItem(sessionKey) !== today) {
+          localStorage.setItem(sessionKey, today);
+          const daysLeft = Math.ceil((expiry.getTime() - Date.now()) / 86_400_000);
+          const expiryLabel = expiry.toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' });
+          if (daysLeft <= 0) {
+            setNotifications(prev => [{
+              id: `fee-expired-${Date.now()}`, title: '🔴 Monthly Fee Expired',
+              description: `Your Gerak account is now inactive. Pay RM25 to MUHAMMAD ATIF DANIEL and upload your receipt to reactivate.`,
+              time: 'Just now', isRead: false, type: 'system' as const,
+            }, ...prev]);
+          } else if (daysLeft <= 3) {
+            setNotifications(prev => [{
+              id: `fee-reminder-${Date.now()}`, title: `⚠️ Fee Due in ${daysLeft} Day${daysLeft === 1 ? '' : 's'}`,
+              description: `Your account expires on ${expiryLabel}. Pay RM25 to MUHAMMAD ATIF DANIEL on 1st–3rd of the month to stay active.`,
+              time: 'Just now', isRead: false, type: 'system' as const,
+            }, ...prev]);
+          }
+        }
+      } else if (role === 'superadmin' || role === 'admin') {
+        _setCurrentPage('admin-home');
+      } else {
+        _setCurrentPage('dashboard');
+      }
     }
   };
 
-  // ── Supabase helper: persist balance/points ────────────────────────
-  const persistProfile = (balance: number, points: number) => {
+  // ── Supabase helper: persist points ────────────────────────
+  const persistPoints = (points: number) => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
-      if (u) supabase.from('profiles').update({ balance, points }).eq('id', u.id);
+      if (u) supabase.from('profiles').update({ points }).eq('id', u.id);
     });
   };
 
@@ -272,52 +318,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { error: null };
   };
 
-  const register = async (name: string, matricNo: string, email: string, password: string): Promise<{ error: string | null }> => {
+  const register = async (name: string, matricNo: string, email: string, password: string, phone: string, university: string, campus: string): Promise<{ error: string | null }> => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name, matric_no: matricNo.toUpperCase() } },
+      options: { data: { name, matric_no: matricNo.toUpperCase(), phone, university, campus } },
     });
     if (error) return { error: error.message };
-    // Auto sign-in after signup (requires email confirmations disabled in Supabase)
     const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
     if (signInErr) return { error: 'Account created! Please sign in.' };
     const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (authUser) await loadProfile(authUser.id);
+    if (authUser) {
+      await supabase.from('profiles').update({ phone, university, campus }).eq('id', authUser.id);
+      await loadProfile(authUser.id);
+    }
     return { error: null };
   };
 
+  const refreshUserData = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+    const { data } = await supabase.from('profiles').select('*').eq('id', authUser.id).single();
+    if (data) {
+      setUser(prev => ({
+        ...prev,
+        feeReceiptUrl:          data.fee_receipt_url           ?? '',
+        feeReceiptVerified:     data.fee_receipt_verified      ?? false,
+        feeReceiptAmount:       data.fee_receipt_amount        ?? '',
+        feeReceiptDate:         data.fee_receipt_date          ?? '',
+        feeReceiptExpiry:       data.fee_receipt_expiry        ?? '',
+        feeReceiptRejectReason: data.fee_receipt_reject_reason ?? '',
+      }));
+    }
+  };
+
+  const updateProfile = async (updates: { name?: string; matricNo?: string; email?: string; phone?: string; vehicle?: string; plateNumber?: string; feeReceiptUrl?: string }): Promise<{ error: string | null }> => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return { error: 'Not authenticated' };
+    const row: Record<string, string> = {};
+    if (updates.name           !== undefined) row.name            = updates.name;
+    if (updates.matricNo       !== undefined) row.matric_no       = updates.matricNo;
+    if (updates.email          !== undefined) row.email           = updates.email;
+    if (updates.phone          !== undefined) row.phone           = updates.phone;
+    if (updates.vehicle        !== undefined) row.vehicle         = updates.vehicle;
+    if (updates.plateNumber    !== undefined) row.plate_number    = updates.plateNumber;
+
+    if (updates.feeReceiptUrl  !== undefined) row.fee_receipt_url = updates.feeReceiptUrl;
+    const { error } = await supabase.from('profiles').update(row).eq('id', authUser.id);
+    if (error) return { error: error.message };
+    setUser(prev => ({ ...prev, ...updates }));
+    return { error: null };
+  };
+
+
   const logout = () => {
     setPageHistory([]);
-    setUser({ name: '', matricNo: '', email: '', balance: 0, points: 0, isLoggedIn: false });
+    setUser({ name: '', matricNo: '', email: '', phone: '', university: '', campus: '', gerakId: '', role: 'customer', status: 'active', vehicle: '', plateNumber: '', feeReceiptUrl: '', feeReceiptVerified: false, feeReceiptAmount: '', feeReceiptDate: '', feeReceiptExpiry: '', feeReceiptRejectReason: '', canDrive: false, canRent: false, points: 0, isLoggedIn: false });
     setActiveRide(null);
     setJubahBooking(null);
-    setCart([]);
-    setActiveFoodOrder(null);
     _setCurrentPage('login');
     supabase.auth.signOut();
-  };
-
-  const topUpWallet = (amount: number) => {
-    const newBalance = user.balance + amount;
-    const newPoints  = user.points + Math.floor(amount * 2);
-    setUser(prev => ({ ...prev, balance: newBalance, points: newPoints }));
-    persistProfile(newBalance, newPoints);
-    addNotification('Wallet Top-Up', `RM${amount.toFixed(2)} loaded successfully to GerakPay.`, 'system');
-  };
-
-  const deductWallet = (amount: number): boolean => {
-    if (user.balance < amount) return false;
-    const newBalance = user.balance - amount;
-    setUser(prev => ({ ...prev, balance: newBalance }));
-    persistProfile(newBalance, user.points);
-    return true;
   };
 
   const addPoints = (points: number) => {
     const newPoints = user.points + points;
     setUser(prev => ({ ...prev, points: newPoints }));
-    persistProfile(user.balance, newPoints);
+    persistPoints(newPoints);
   };
 
   // 2. Notification Operations
@@ -339,11 +405,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 3. Transport Simulation
   const bookRide = (pickup: string, destination: string, fare: number) => {
-    if (user.balance < fare) {
-      addNotification('Booking Failed', 'Insufficient wallet balance. Please top up GerakPay.', 'system');
-      return;
-    }
-
     const mockDriver: DriverDetails = {
       name: 'Khairul Anwar',
       rating: 4.9,
@@ -364,7 +425,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       driver: mockDriver
     };
 
-    deductWallet(fare);
     addPoints(Math.floor(fare * 5));
     setActiveRide(newBooking);
       if (currentPage !== 'transport') {
@@ -410,9 +470,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearInterval(rideTimer);
         setRideTimer(null);
       }
-      // refund
-      topUpWallet(activeRide.fare);
-      addNotification('Ride Cancelled', 'Your booking was cancelled. RM' + activeRide.fare.toFixed(2) + ' refunded.', 'transport');
+      addNotification('Ride Cancelled', 'Your booking was cancelled.', 'transport');
       setActiveRide(null);
     }
   };
@@ -454,12 +512,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     const cost = paymentMode === 'postage' ? 80.00 : 55.00;
 
-    if (user.balance < cost) {
-      addNotification('Booking Failed', `Insufficient funds (RM${cost.toFixed(2)} required).`, 'system');
-      return;
-    }
-
-    deductWallet(cost);
     addPoints(paymentMode === 'postage' ? 200 : 150);
 
     const newBooking: JubahBooking = {
@@ -478,7 +530,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setJubahBooking(newBooking);
-    addNotification('Robe Booking Confirmed', `Booking for ${fullName} (${remark}) confirmed. Payment: RM${cost.toFixed(2)}.`, 'jubah');
+    addNotification('Robe Booking Confirmed', `Booking for ${fullName} (${remark}) confirmed. Service fee: RM${cost.toFixed(2)}.`, 'jubah');
 
     setTimeout(() => setJubahBooking(prev => prev ? { ...prev, status: 'cleaning' } : null), 15000);
     setTimeout(() => setJubahBooking(prev => prev ? { ...prev, status: 'packaging' } : null), 30000);
@@ -512,116 +564,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const cancelJubahBooking = () => {
     if (jubahBooking) {
-      topUpWallet(jubahBooking.cost);
       setJubahBooking(null);
-      addNotification('Booking Cancelled', `Convocation robe order cancelled. RM${jubahBooking.cost.toFixed(2)} refunded.`, 'jubah');
-    }
-  };
-
-  // 5. Food Delivery Operations
-  const addToCart = (item: Omit<CartItem, 'quantity'>) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  };
-
-  const removeFromCart = (id: string) => {
-    setCart(prev => prev.filter(i => i.id !== id));
-  };
-
-  const updateCartQuantity = (id: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(id);
-      return;
-    }
-    setCart(prev => prev.map(i => i.id === id ? { ...i, quantity } : i));
-  };
-
-  const clearCart = () => {
-    setCart([]);
-  };
-
-  const checkoutFoodOrder = (): boolean => {
-    const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const deliveryFee = 3.00;
-    const totalCost = subtotal + deliveryFee;
-
-    if (user.balance < totalCost) {
-      addNotification('Checkout Failed', 'Insufficient wallet balance for food order.', 'food');
-      return false;
-    }
-
-    deductWallet(totalCost);
-    addPoints(Math.floor(totalCost * 3));
-
-    const newOrder: FoodOrder = {
-      id: `FD-${Math.floor(1000 + Math.random() * 9000)}`,
-      items: [...cart],
-      total: totalCost,
-      status: 'placed',
-      timeRemaining: 180, // 3 minutes simulated
-      date: 'Today, ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-
-    setActiveFoodOrder(newOrder);
-    setCart([]);
-    addNotification('Food Order Placed', `Order ${newOrder.id} submitted. Preparing food.`, 'food');
-    setCurrentPage('food');
-
-    // Simulate order progress
-    let currentStep: FoodOrder['status'] = 'placed';
-    const timerId = window.setInterval(() => {
-      if (currentStep === 'placed') {
-        currentStep = 'preparing';
-        setActiveFoodOrder(prev => prev ? { ...prev, status: 'preparing', timeRemaining: 120 } : null);
-        addNotification('Kitchen Preparing', 'The cook is preparing your delicious meal.', 'food');
-      } else if (currentStep === 'preparing') {
-        currentStep = 'delivering';
-        setActiveFoodOrder(prev => prev ? { ...prev, status: 'delivering', timeRemaining: 60 } : null);
-        addNotification('Order Out for Delivery', 'Rider is picking up and heading your way.', 'food');
-      } else if (currentStep === 'delivering') {
-        currentStep = 'completed';
-        setActiveFoodOrder(prev => {
-          if (prev) {
-            const finished = { ...prev, status: 'completed' as const, timeRemaining: 0 };
-            setFoodOrderHistory(history => [finished, ...history]);
-            return null;
-          }
-          return null;
-        });
-        addNotification('Food Delivered', 'Enjoy your meal! Your rider has arrived.', 'food');
-        clearInterval(timerId);
-        setFoodTimer(null);
-      }
-    }, 8000); // 8 seconds per stage for fast demonstration
-
-    setFoodTimer(timerId);
-    return true;
-  };
-
-  const simulateFoodProgress = () => {
-    if (!activeFoodOrder) return;
-    if (foodTimer) {
-      clearInterval(foodTimer);
-      setFoodTimer(null);
-    }
-    const stages: FoodOrder['status'][] = ['placed', 'preparing', 'delivering', 'completed'];
-    const currentIndex = stages.indexOf(activeFoodOrder.status);
-    if (currentIndex < stages.length - 1) {
-      const nextStatus = stages[currentIndex + 1];
-      if (nextStatus === 'completed') {
-        const finished = { ...activeFoodOrder, status: 'completed' as const, timeRemaining: 0 };
-        setFoodOrderHistory(history => [finished, ...history]);
-        setActiveFoodOrder(null);
-        addNotification('Food Delivered', 'Enjoy your meal!', 'food');
-      } else {
-        setActiveFoodOrder(prev => prev ? { ...prev, status: nextStatus, timeRemaining: nextStatus === 'preparing' ? 120 : 60 } : null);
-        addNotification('Food Stage Updated', `Order status is: ${nextStatus.toUpperCase()}`, 'food');
-      }
+      addNotification('Booking Cancelled', 'Convocation robe order cancelled.', 'jubah');
     }
   };
 
@@ -636,8 +580,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         register,
         logout,
-        topUpWallet,
-        deductWallet,
+        updateProfile,
+        refreshUserData,
         addPoints,
         notifications,
         addNotification,
@@ -650,16 +594,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         jubahBooking,
         bookJubah,
         scheduleReturn,
-        cancelJubahBooking,
-        cart,
-        addToCart,
-        removeFromCart,
-        updateCartQuantity,
-        clearCart,
-        activeFoodOrder,
-        foodOrderHistory,
-        checkoutFoodOrder,
-        simulateFoodProgress
+        cancelJubahBooking
       }}
     >
       {children}

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import type { NotificationItem } from '../context/AppContext';
-import { BellRing, Check, Info, Car, GraduationCap, Soup, HelpCircle } from 'lucide-react';
+import { BellRing, Check, Info, Car, GraduationCap, HelpCircle } from 'lucide-react';
 
 export const NotificationsPage: React.FC = () => {
   const { notifications, markAllNotificationsRead } = useApp();
@@ -9,6 +9,7 @@ export const NotificationsPage: React.FC = () => {
   // Proactively mark notifications read when they visit the page
   useEffect(() => {
     markAllNotificationsRead();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getIcon = (type: NotificationItem['type']) => {
@@ -18,9 +19,7 @@ export const NotificationsPage: React.FC = () => {
       case 'transport':
         return <Car className="w-4 h-4 text-blue-500" />;
       case 'jubah':
-        return <GraduationCap className="w-4 h-4 text-indigo-500" />;
-      case 'food':
-        return <Soup className="w-4 h-4 text-amber-500" />;
+        return <GraduationCap className="w-4 h-4 text-blue-500" />;
       default:
         return <HelpCircle className="w-4 h-4 text-slate-500" />;
     }
@@ -33,9 +32,7 @@ export const NotificationsPage: React.FC = () => {
       case 'transport':
         return 'bg-blue-50 border-blue-100 text-blue-600';
       case 'jubah':
-        return 'bg-indigo-50 border-indigo-100 text-indigo-600';
-      case 'food':
-        return 'bg-amber-50 border-amber-100 text-amber-600';
+        return 'bg-blue-50 border-blue-100 text-blue-600';
       default:
         return 'bg-slate-50 border-slate-100 text-slate-600';
     }
@@ -110,11 +107,11 @@ export const NotificationsPage: React.FC = () => {
 
       {/* Tip Banner */}
       <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex gap-3 text-emerald-800">
-        <Info className="w-5 h-5 text-primary shrink-0" />
+        <Info className="w-5 h-5 text-emerald-600 shrink-0" />
         <div>
           <h4 className="text-xs font-bold leading-tight m-0">Dynamic Inbox Feeds</h4>
           <p className="text-[10px] text-emerald-700 leading-normal mt-1 font-semibold">
-            Track and history logs update automatically. Verify alerts here for driver coordinates, gown shipments and campus kitchen operations.
+            Track and history logs update automatically. Verify alerts here for driver coordinates and gown shipments.
           </p>
         </div>
       </div>
