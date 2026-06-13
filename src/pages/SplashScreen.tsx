@@ -25,7 +25,7 @@ export const SplashScreen: React.FC = () => {
         className="flex flex-col items-center gap-3"
       >
         {/* Wordmark */}
-        <h1 className="text-5xl font-extrabold tracking-tight m-0" style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, color: '#0f172a' }}>
+        <h1 className="text-5xl font-extrabold tracking-tight m-0" style={{ fontFamily: 'Space Grotesk, sans-serif', fontWeight: 900, color: '#0f172a' }}>
           ger<span style={{ color: '#EF4444' }}>a</span>k
         </h1>
 

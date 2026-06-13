@@ -37,10 +37,10 @@ export const Header: React.FC = () => {
           }}
         >
           <div className="w-8 h-8 rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center shrink-0">
-            <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.3rem', color: '#0F172A', lineHeight: 1, fontWeight: 900 }}>g</span>
+            <span style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '1.3rem', color: '#0F172A', lineHeight: 1, fontWeight: 900 }}>g</span>
           </div>
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-slate-800 m-0 leading-none" style={{ fontFamily: 'Outfit, sans-serif' }}>
+            <h1 className="text-xl font-extrabold tracking-tight text-slate-800 m-0 leading-none" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
               ger<span style={{ color: '#EF4444' }}>a</span>k
             </h1>
             <span className="text-[10px] text-slate-800 font-bold tracking-wider">

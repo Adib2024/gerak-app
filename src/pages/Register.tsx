@@ -73,7 +73,7 @@ export const Register: React.FC = () => {
         <div
           className="w-12 h-12 rounded-xl bg-white shadow-lg shadow-primary/10 mb-2 flex items-center justify-center"
         >
-          <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2rem', color: '#0F172A', lineHeight: 1, fontWeight: 900 }}>g</span>
+          <span style={{ fontFamily: 'Space Grotesk, sans-serif', fontSize: '2rem', color: '#0F172A', lineHeight: 1, fontWeight: 900 }}>g</span>
         </div>
         <h2 className="text-xl font-black text-slate-800 tracking-tight font-heading m-0">
           Create Gerak Account
