@@ -40,7 +40,7 @@ export const Header: React.FC = () => {
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '1.3rem', color: '#0F172A', lineHeight: 1, fontWeight: 900 }}>g</span>
           </div>
           <div>
-            <h1 className="text-xl tracking-tight text-slate-800 m-0 leading-none" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>
+            <h1 className="text-lg tracking-tight text-slate-800 m-0 leading-none" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700 }}>
               ger<span style={{ color: '#EF4444' }}>a</span>k
             </h1>
             <span className="text-[10px] text-slate-800 font-bold tracking-wider">

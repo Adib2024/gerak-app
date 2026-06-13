@@ -81,7 +81,7 @@ const InstallPrompt: React.FC = () => {
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '2.4rem', color: '#0F172A', lineHeight: 1, fontWeight: 900 }}>g</span>
           </div>
           <div>
-            <p className="text-base text-slate-900 m-0" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400 }}>
+            <p className="text-sm text-slate-900 m-0" style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700 }}>
               ger<span style={{ color: '#EF4444' }}>a</span>k
             </p>
             <p className="text-xs text-slate-400 font-semibold mt-0.5">Smart Campus Platform · UMPSA</p>
