@@ -54,14 +54,15 @@ export const Login: React.FC = () => {
                 <Mail className="w-4 h-4" />
               </span>
               <input
-                type="email"
+                type="text"
+                inputMode="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.trim())}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-700 focus:outline-none focus:border-primary focus:bg-white transition"
                 placeholder="smartcampus@gmail.com"
                 autoCapitalize="none"
                 autoCorrect="off"
-                autoComplete="email"
+                autoComplete="username"
                 spellCheck={false}
                 required
               />
