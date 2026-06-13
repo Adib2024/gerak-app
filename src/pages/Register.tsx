@@ -70,9 +70,12 @@ export const Register: React.FC = () => {
 
       {/* Header */}
       <div className="flex flex-col items-center text-center mt-4">
-        <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center font-black text-2xl shadow-lg shadow-primary/20 mb-2" style={{ color: '#0f172a' }}>
-          g
-        </div>
+        <img
+          src="/gerak-icon.svg"
+          alt="Gerak"
+          className="w-12 h-12 rounded-xl shadow-lg shadow-primary/10 mb-2"
+          style={{ background: '#fff' }}
+        />
         <h2 className="text-xl font-black text-slate-800 tracking-tight font-heading m-0">
           Create Gerak Account
         </h2>

@@ -27,9 +27,12 @@ export const Login: React.FC = () => {
     <div className="flex-1 bg-slate-50 flex flex-col justify-between p-6 select-none animate-fade-in h-full">
       {/* Branding */}
       <div className="flex flex-col items-center text-center mt-6">
-        <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center font-black text-3xl shadow-lg shadow-primary/20 mb-3 animate-float" style={{ color: '#0f172a' }}>
-          g
-        </div>
+        <img
+          src="/gerak-icon.svg"
+          alt="Gerak"
+          className="w-14 h-14 rounded-2xl shadow-lg shadow-primary/10 mb-3 animate-float"
+          style={{ background: '#fff' }}
+        />
         <h2 className="text-2xl font-black text-slate-800 tracking-tight font-heading m-0">
           Sign In to <span style={{ fontFamily: 'Prata, serif', fontSize: '2.5rem', lineHeight: 1 }}>ger<span style={{ color: '#EF4444' }}>a</span>k</span>
         </h2>
