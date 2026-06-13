@@ -24,13 +24,8 @@ export const SplashScreen: React.FC = () => {
         }}
         className="flex flex-col items-center gap-3"
       >
-        {/* App icon — wordmark in a rounded square */}
-        <div className="w-24 h-24 rounded-[28px] bg-white border border-slate-100 shadow-2xl shadow-slate-200 overflow-hidden mb-2">
-          <img src="/gerak-icon.svg" alt="Gerak" className="w-full h-full object-contain" />
-        </div>
-
         {/* Wordmark */}
-        <h1 className="text-5xl font-extrabold tracking-tight m-0" style={{ fontFamily: 'Prata, serif', color: '#0f172a' }}>
+        <h1 className="text-5xl font-extrabold tracking-tight m-0" style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, color: '#0f172a' }}>
           ger<span style={{ color: '#EF4444' }}>a</span>k
         </h1>
 

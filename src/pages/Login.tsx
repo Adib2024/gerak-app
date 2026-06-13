@@ -30,10 +30,10 @@ export const Login: React.FC = () => {
         <div
           className="w-14 h-14 rounded-2xl bg-white shadow-lg shadow-primary/10 mb-3 animate-float flex items-center justify-center"
         >
-          <span style={{ fontFamily: 'Prata, serif', fontSize: '2.4rem', color: '#0F172A', lineHeight: 1 }}>g</span>
+          <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2.4rem', color: '#0F172A', lineHeight: 1, fontWeight: 900 }}>g</span>
         </div>
         <h2 className="text-2xl font-black text-slate-800 tracking-tight font-heading m-0">
-          Sign In to <span style={{ fontFamily: 'Prata, serif', fontSize: '2.5rem', lineHeight: 1 }}>ger<span style={{ color: '#EF4444' }}>a</span>k</span>
+          Sign In to <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2.5rem', lineHeight: 1 }}>ger<span style={{ color: '#EF4444' }}>a</span>k</span>
         </h2>
         <p className="text-slate-400 text-xs mt-1 font-semibold">
           Smart Campus Service Platform

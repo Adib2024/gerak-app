@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="115" fill="#FFFFFF"/>
   <text
-    x="256" y="375"
+    x="256" y="370"
     text-anchor="middle"
-    font-family="Georgia, 'Times New Roman', serif"
-    font-size="390"
-    font-weight="800"
+    font-family="'Outfit', Arial, Helvetica, sans-serif"
+    font-size="380"
+    font-weight="900"
     fill="#0F172A"
   >g</text>
 </svg>
