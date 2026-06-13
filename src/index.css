@@ -59,6 +59,14 @@
   -webkit-tap-highlight-color: transparent; /* remove grey flash on tap */
 }
 
+#root {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Remove 300 ms click delay on all interactive elements */
 button, a, input, select, textarea, [role="button"] {
   touch-action: manipulation;
