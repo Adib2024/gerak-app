@@ -1,34 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- White background -->
-  <rect width="512" height="512" fill="#FFFFFF"/>
-
-  <!-- Red accent bar at top -->
-  <rect x="0" y="0" width="512" height="8" fill="#EF4444"/>
-
-  <!-- "gerak" wordmark — centred vertically with tagline -->
+  <rect width="512" height="512" rx="115" fill="#FFFFFF"/>
   <text
-    x="256" y="248"
+    x="256" y="370"
     text-anchor="middle"
-    dominant-baseline="middle"
     font-family="Georgia, Palatino, 'Book Antiqua', serif"
-    font-size="152"
-    font-weight="700"
-    letter-spacing="-6"
-  >
-    <tspan fill="#0F172A">ger</tspan><tspan fill="#EF4444">a</tspan><tspan fill="#0F172A">k</tspan>
-  </text>
-
-  <!-- Tagline -->
-  <text
-    x="256" y="336"
-    text-anchor="middle"
-    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
-    font-size="30"
-    font-weight="600"
-    letter-spacing="5"
-    fill="#94A3B8"
-  >SMART CAMPUS</text>
-
-  <!-- Bottom red dot accent -->
-  <circle cx="256" cy="406" r="10" fill="#EF4444"/>
+    font-size="400"
+    font-weight="800"
+    fill="#0F172A"
+  >g</text>
 </svg>
