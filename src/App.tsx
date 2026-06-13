@@ -221,6 +221,7 @@ const SwipeBackGesture: React.FC<{ children: React.ReactNode }> = ({ children })
           transform: dragging ? `translateX(${renderDragX}px)` : 'translateX(0)',
           transition: dragging ? 'none' : 'transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)',
           position: 'relative', zIndex: 9991,
+          width: '100%', height: '100%', overflow: 'hidden',
         }}
       >
         {children}

@@ -65,9 +65,10 @@ button, a, input, select, textarea, [role="button"] {
 }
 
 html {
-  /* Prevents elastic over-scroll on the root document */
   overscroll-behavior: none;
   height: 100%;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -79,6 +80,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100%;
 
   /* Use dynamic viewport height — fixes iOS Safari address-bar resize */
   min-height: 100vh;
