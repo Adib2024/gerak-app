@@ -77,8 +77,8 @@ const InstallPrompt: React.FC = () => {
 
         {/* App card */}
         <div className="flex items-center gap-4 px-6 py-4 border-b border-slate-100">
-          <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-md overflow-hidden shrink-0 flex items-center justify-center">
-            <img src="/gerak-icon.svg" alt="Gerak" className="w-full h-full object-contain" />
+          <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-md shrink-0 flex items-center justify-center">
+            <span style={{ fontFamily: 'Prata, serif', fontSize: '2.4rem', color: '#0F172A', lineHeight: 1 }}>g</span>
           </div>
           <div>
             <p className="text-base font-black text-slate-900 m-0" style={{ fontFamily: 'Prata, serif' }}>

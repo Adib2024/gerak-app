@@ -36,12 +36,9 @@ export const Header: React.FC = () => {
             else setCurrentPage('dashboard');
           }}
         >
-          <img
-            src="/gerak-icon.svg"
-            alt="Gerak"
-            className="w-8 h-8 rounded-lg shadow-sm"
-            style={{ background: '#fff' }}
-          />
+          <div className="w-8 h-8 rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center shrink-0">
+            <span style={{ fontFamily: 'Prata, serif', fontSize: '1.3rem', color: '#0F172A', lineHeight: 1 }}>g</span>
+          </div>
           <div>
             <h1 className="text-xl font-extrabold tracking-tight text-slate-800 m-0 leading-none" style={{ fontFamily: 'Prata, serif' }}>
               ger<span style={{ color: '#EF4444' }}>a</span>k
