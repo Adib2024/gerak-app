@@ -86,6 +86,7 @@ interface DriverInvite {
   id: string;
   email: string;
   campus: string;
+  role: string;
   can_drive: boolean;
   can_rent: boolean;
   used: boolean;
@@ -112,7 +113,8 @@ type PendingAction =
   | { type: 'toggle-status'; u: ProfileUser }
   | { type: 'terminate';     u: ProfileUser }
   | { type: 'toggle-cap';    u: ProfileUser; canDrive: boolean; canRent: boolean }
-  | { type: 'campus';        u: ProfileUser; campus: 'Pekan' | 'Gambang' };
+  | { type: 'campus';        u: ProfileUser; campus: 'Pekan' | 'Gambang' }
+  | { type: 'toggle-role';   u: ProfileUser; newRole: 'driver' | 'admin' };
 
 // ── Shared user card ────────────────────────────────────────────────────────
 const UserCard: React.FC<{
@@ -122,12 +124,14 @@ const UserCard: React.FC<{
   terminating: string | null;
   togglingCap?: string | null;
   togglingCampus?: string | null;
+  togglingRole?: string | null;
   onToggle: (u: ProfileUser) => void;
   onTerminate: (u: ProfileUser) => void;
   onCapToggle?: (u: ProfileUser, canDrive: boolean, canRent: boolean) => void;
   onCampusChange?: (u: ProfileUser, campus: 'Pekan' | 'Gambang') => void;
+  onRoleToggle?: (u: ProfileUser, newRole: 'driver' | 'admin') => void;
   roleStyle: Record<string, string>;
-}> = ({ u, canManage, togglingStatus, terminating, togglingCap, togglingCampus, onToggle, onTerminate, onCapToggle, onCampusChange, roleStyle }) => (
+}> = ({ u, canManage, togglingStatus, terminating, togglingCap, togglingCampus, togglingRole, onToggle, onTerminate, onCapToggle, onCampusChange, onRoleToggle, roleStyle }) => (
   <div className={`rounded-2xl border p-4 flex flex-col gap-2.5 ${
     u.status === 'inactive' ? 'bg-red-50/50 border-red-100' : 'bg-white border-slate-100'
   }`}>
@@ -146,6 +150,28 @@ const UserCard: React.FC<{
       <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{u.gerak_id} · UMPSA {u.campus}</p>
       <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
     </div>
+
+    {/* Role pill — superadmin only, driver or admin */}
+    {onRoleToggle && (u.role === 'driver' || u.role === 'admin') && (
+      <div className="flex gap-2">
+        {(['driver', 'admin'] as const).map(r => (
+          <button key={r}
+            onClick={() => u.role !== r && onRoleToggle(u, r)}
+            disabled={togglingRole === u.id || u.role === r}
+            className={`flex-1 font-extrabold text-[10px] py-2 rounded-xl border transition active:scale-95 disabled:opacity-60 ${
+              u.role === r
+                ? r === 'admin'
+                  ? 'bg-violet-50 border-violet-200 text-violet-700'
+                  : 'bg-primary/10 border-primary/30 text-primary'
+                : 'bg-slate-50 border-slate-200 text-slate-400'
+            }`}>
+            {togglingRole === u.id
+              ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin inline-block" />
+              : r === 'driver' ? '🚗 Driver' : '⚙️ Admin'}
+          </button>
+        ))}
+      </div>
+    )}
 
     {/* Capability toggles — drivers only */}
     {u.role === 'driver' && onCapToggle && (
@@ -248,11 +274,13 @@ export const AdminHome: React.FC = () => {
   const [invitesLoading, setInvitesLoading] = useState(false);
   const [inviteEmail, setInviteEmail]       = useState('');
   const [inviteCampus, setInviteCampus]     = useState<'Pekan' | 'Gambang'>('Gambang');
+  const [inviteRole, setInviteRole]         = useState<'driver' | 'admin'>('driver');
   const [inviteCanDrive, setInviteCanDrive] = useState(true);
   const [inviteCanRent,  setInviteCanRent]  = useState(false);
   const [inviteSending, setInviteSending]   = useState(false);
   const [togglingCap, setTogglingCap]         = useState<string | null>(null);
   const [togglingCampus, setTogglingCampus]   = useState<string | null>(null);
+  const [togglingRole, setTogglingRole]       = useState<string | null>(null);
   const [showInviteConfirm, setShowInviteConfirm] = useState(false);
 
   // Users management state
@@ -425,19 +453,20 @@ export const AdminHome: React.FC = () => {
 
   const handleSendInvite = async () => {
     if (!inviteEmail.trim()) return;
-    if (!inviteCanDrive && !inviteCanRent) { showToast('Select at least one capability.'); return; }
+    if (inviteRole === 'driver' && !inviteCanDrive && !inviteCanRent) { showToast('Select at least one capability.'); return; }
     setInviteSending(true);
     const { data: { user: authUser } } = await supabase.auth.getUser();
     const { error } = await supabase.from('driver_invites').insert({
       email:      inviteEmail.trim().toLowerCase(),
       campus:     inviteCampus,
-      can_drive:  inviteCanDrive,
-      can_rent:   inviteCanRent,
+      role:       inviteRole,
+      can_drive:  inviteRole === 'admin' ? true : inviteCanDrive,
+      can_rent:   inviteRole === 'admin' ? true : inviteCanRent,
       created_by: authUser?.id,
     });
     setInviteSending(false);
     if (error) showToast(error.message.includes('unique') ? 'This email already has a pending invite.' : error.message);
-    else { showToast('Invite added!'); setInviteEmail(''); setInviteCanDrive(true); setInviteCanRent(false); loadInvites(); }
+    else { showToast('Invite added!'); setInviteEmail(''); setInviteRole('driver'); setInviteCanDrive(true); setInviteCanRent(false); loadInvites(); }
   };
 
   const handleRevokeInvite = async (id: string) => {
@@ -498,12 +527,21 @@ export const AdminHome: React.FC = () => {
     if (activeTab === 'users') loadUsers();
   }, [activeTab, loadUsers]);
 
+  const handleToggleRole = async (u: ProfileUser, newRole: 'driver' | 'admin') => {
+    setTogglingRole(u.id);
+    const { error } = await supabase.rpc('toggle_user_role', { p_target_id: u.id, p_new_role: newRole });
+    setTogglingRole(null);
+    if (error) showToast('Failed to change role.');
+    else { showToast(`${u.name} is now ${newRole === 'admin' ? 'Admin + Driver' : 'Driver only'}.`); loadUsers(); }
+  };
+
   const executePendingAction = () => {
     if (!pendingAction) return;
     if (pendingAction.type === 'toggle-status') handleToggleStatus(pendingAction.u);
     else if (pendingAction.type === 'terminate')  handleTerminate(pendingAction.u);
     else if (pendingAction.type === 'toggle-cap') handleToggleCapability(pendingAction.u, pendingAction.canDrive, pendingAction.canRent);
     else if (pendingAction.type === 'campus')     handleChangeCampus(pendingAction.u, pendingAction.campus);
+    else if (pendingAction.type === 'toggle-role') handleToggleRole(pendingAction.u, pendingAction.newRole);
     setPendingAction(null);
   };
 
@@ -713,20 +751,45 @@ export const AdminHome: React.FC = () => {
           {/* Invite form */}
           <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              <UserPlus className="w-4 h-4 text-primary" /> Invite Driver
+              <UserPlus className="w-4 h-4 text-primary" /> Invite Staff
             </h3>
 
+            {/* Role selector */}
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Role</p>
+              <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
+                {(['driver', 'admin'] as const).map(r => (
+                  <button key={r} type="button" onClick={() => setInviteRole(r)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
+                      inviteRole === r
+                        ? r === 'admin' ? 'bg-violet-600 text-white shadow-sm' : 'bg-primary text-white shadow-sm'
+                        : 'text-slate-400'
+                    }`}>
+                    {r === 'driver' ? '🚗 Driver' : '⚙️ Admin'}
+                  </button>
+                ))}
+              </div>
+              {inviteRole === 'admin' && (
+                <p className="text-[10px] text-violet-500 font-semibold mt-1.5 pl-1">
+                  Admin includes full driving capabilities automatically.
+                </p>
+              )}
+            </div>
+
             {/* Campus picker */}
-            <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
-              {(['Gambang', 'Pekan'] as const).map(c => (
-                <button key={c} type="button" onClick={() => setInviteCampus(c)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
-                    inviteCampus === c ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <div>
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Campus</p>
+              <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
+                {(['Gambang', 'Pekan'] as const).map(c => (
+                  <button key={c} type="button" onClick={() => setInviteCampus(c)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
+                      inviteCampus === c ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Email input */}
@@ -737,38 +800,40 @@ export const AdminHome: React.FC = () => {
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && inviteEmail.trim() && setShowInviteConfirm(true)}
-                placeholder="driver@email.com"
+                placeholder="staff@email.com"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
               />
             </div>
 
-            {/* Capability toggles */}
-            <div>
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Capabilities</p>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setInviteCanDrive(v => !v)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-extrabold border transition active:scale-95 ${
-                    inviteCanDrive
-                      ? 'bg-primary/10 border-primary/30 text-primary'
-                      : 'bg-slate-50 border-slate-200 text-slate-400'
-                  }`}>
-                  <Car className="w-3 h-3" /> Gerak Car {inviteCanDrive ? '✓' : '✗'}
-                </button>
-                <button type="button" onClick={() => setInviteCanRent(v => !v)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-extrabold border transition active:scale-95 ${
-                    inviteCanRent
-                      ? 'bg-amber-50 border-amber-200 text-amber-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-400'
-                  }`}>
-                  <KeyRound className="w-3 h-3" /> Rental {inviteCanRent ? '✓' : '✗'}
-                </button>
+            {/* Capability toggles — driver only */}
+            {inviteRole === 'driver' && (
+              <div>
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Capabilities</p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setInviteCanDrive(v => !v)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-extrabold border transition active:scale-95 ${
+                      inviteCanDrive
+                        ? 'bg-primary/10 border-primary/30 text-primary'
+                        : 'bg-slate-50 border-slate-200 text-slate-400'
+                    }`}>
+                    <Car className="w-3 h-3" /> Gerak Car {inviteCanDrive ? '✓' : '✗'}
+                  </button>
+                  <button type="button" onClick={() => setInviteCanRent(v => !v)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-extrabold border transition active:scale-95 ${
+                      inviteCanRent
+                        ? 'bg-amber-50 border-amber-200 text-amber-700'
+                        : 'bg-slate-50 border-slate-200 text-slate-400'
+                    }`}>
+                    <KeyRound className="w-3 h-3" /> Rental {inviteCanRent ? '✓' : '✗'}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               onClick={() => {
                 if (!inviteEmail.trim()) return;
-                if (!inviteCanDrive && !inviteCanRent) { showToast('Select at least one capability.'); return; }
+                if (inviteRole === 'driver' && !inviteCanDrive && !inviteCanRent) { showToast('Select at least one capability.'); return; }
                 setShowInviteConfirm(true);
               }}
               disabled={!inviteEmail.trim()}
@@ -892,11 +957,12 @@ export const AdminHome: React.FC = () => {
                 {profileUsers.map(u => (
                   <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
                     togglingStatus={togglingStatus} terminating={terminating}
-                    togglingCap={togglingCap} togglingCampus={togglingCampus}
+                    togglingCap={togglingCap} togglingCampus={togglingCampus} togglingRole={togglingRole}
                     onToggle={u => setPendingAction({ type: 'toggle-status', u })}
                     onTerminate={u => setPendingAction({ type: 'terminate', u })}
                     onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
                     onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
+                    onRoleToggle={user.role === 'superadmin' ? (u, newRole) => setPendingAction({ type: 'toggle-role', u, newRole }) : undefined}
                     roleStyle={ROLE_STYLE} />
                 ))}
               </div>
@@ -1552,17 +1618,21 @@ export const AdminHome: React.FC = () => {
       const isTerminate = pendingAction.type === 'terminate';
       const isStop = pendingAction.type === 'toggle-status' && u.status === 'active';
 
+      const isRoleToAdmin = pendingAction.type === 'toggle-role' && pendingAction.newRole === 'admin';
+
       const title =
         pendingAction.type === 'terminate'     ? `Terminate ${u.name}?` :
         pendingAction.type === 'toggle-status' ? (isStop ? `Suspend ${u.name}?` : `Reactivate ${u.name}?`) :
         pendingAction.type === 'toggle-cap'    ? `Update capabilities for ${u.name}?` :
-        `Move ${u.name} to UMPSA ${pendingAction.campus}?`;
+        pendingAction.type === 'toggle-role'   ? (isRoleToAdmin ? `Promote ${u.name} to Admin?` : `Change ${u.name} to Driver?`) :
+        `Move ${u.name} to UMPSA ${(pendingAction as any).campus}?`;
 
       const desc =
-        isTerminate ? 'This will permanently remove their account. This cannot be undone.' :
-        isStop      ? 'They will lose access to the app until reactivated.' :
+        isTerminate  ? 'This will permanently remove their account. This cannot be undone.' :
+        isStop       ? 'They will lose access to the app until reactivated.' :
         pendingAction.type === 'toggle-status' ? 'They will regain access to the app.' :
         pendingAction.type === 'toggle-cap'    ? 'Their service capabilities will be updated immediately.' :
+        pendingAction.type === 'toggle-role'   ? (isRoleToAdmin ? 'They will gain Admin panel access + full driving capabilities.' : 'They will lose Admin panel access and become a driver only.') :
         'Their campus assignment will change immediately.';
 
       return (
@@ -1613,7 +1683,7 @@ export const AdminHome: React.FC = () => {
           <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
 
           {/* Title */}
-          <h3 className="text-sm font-black text-slate-800 text-center mb-1">Confirm Driver Invite</h3>
+          <h3 className="text-sm font-black text-slate-800 text-center mb-1">Confirm {inviteRole === 'admin' ? 'Admin' : 'Driver'} Invite</h3>
           <p className="text-[10px] text-slate-400 font-semibold text-center mb-5">
             Please review before sending.
           </p>
@@ -1622,9 +1692,9 @@ export const AdminHome: React.FC = () => {
           <div className="bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden mb-5">
 
             {/* Header stripe */}
-            <div className="bg-primary px-4 py-3 flex items-center gap-2">
+            <div className={`px-4 py-3 flex items-center gap-2 ${inviteRole === 'admin' ? 'bg-violet-600' : 'bg-primary'}`}>
               <Send className="w-3.5 h-3.5 text-white" />
-              <span className="text-white font-extrabold text-xs uppercase tracking-widest">Driver Invite</span>
+              <span className="text-white font-extrabold text-xs uppercase tracking-widest">{inviteRole === 'admin' ? 'Admin' : 'Driver'} Invite</span>
             </div>
 
             {/* Details */}

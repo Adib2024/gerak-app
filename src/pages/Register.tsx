@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { ShieldAlert, User, Mail, Lock, Eye, EyeOff, Phone, ArrowRight, Building2, MapPin, IdCard, Car } from 'lucide-react';
 
-type InviteStatus = null | 'checking' | { isDriver: boolean; campus: string };
+type InviteStatus = null | 'checking' | { isDriver: boolean; campus: string; role: string };
 
 export const Register: React.FC = () => {
   const { register, setCurrentPage } = useApp();
@@ -32,7 +32,7 @@ export const Register: React.FC = () => {
     setInviteStatus('checking');
     const timer = setTimeout(async () => {
       const { data } = await supabase.rpc('check_driver_invite', { p_email: email });
-      setInviteStatus({ isDriver: data?.is_driver ?? false, campus: data?.campus ?? '' });
+      setInviteStatus({ isDriver: data?.is_driver ?? false, campus: data?.campus ?? '', role: data?.role ?? 'driver' });
     }, 600);
     return () => clearTimeout(timer);
   }, [email]);
@@ -217,8 +217,8 @@ export const Register: React.FC = () => {
                   <>
                     <Car className="w-4 h-4 shrink-0" />
                     <div>
-                      <p className="font-extrabold leading-tight">Pre-approved Driver</p>
-                      <p className="text-[9px] font-semibold opacity-70 mt-0.5">UMPSA {invite!.campus} · Driver Account</p>
+                      <p className="font-extrabold leading-tight">{invite!.role === 'admin' ? 'Pre-approved Admin' : 'Pre-approved Driver'}</p>
+                      <p className="text-[9px] font-semibold opacity-70 mt-0.5">UMPSA {invite!.campus} · {invite!.role === 'admin' ? 'Admin + Driver Account' : 'Driver Account'}</p>
                     </div>
                   </>
                 ) : (
