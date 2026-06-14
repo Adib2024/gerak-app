@@ -317,11 +317,7 @@ export const Profile: React.FC = () => {
 
                 {/* Verified + active */}
                 {!uploading && !verifying && isActive && (
-                  <div className="mt-2 flex items-start gap-3">
-                    {user.feeReceiptUrl && (
-                      <img src={user.feeReceiptUrl} alt="Receipt"
-                        className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-sm shrink-0" />
-                    )}
+                  <div className="mt-2">
                     <div className="flex-1 min-w-0">
                       <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-extrabold px-2.5 py-1 rounded-full">
                         <ShieldCheck className="w-3 h-3" /> AI Verified
