@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { supabase } from './lib/supabase';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { SplashScreen } from './pages/SplashScreen';
@@ -259,14 +258,8 @@ const SwipeBackGesture: React.FC<{ children: React.ReactNode }> = ({ children })
 };
 
 const AppContent: React.FC = () => {
-  const { currentPage, setCurrentPage } = useApp();
+  const { currentPage } = useApp();
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setCurrentPage('reset-password');
-    });
-    return () => subscription.unsubscribe();
-  }, [setCurrentPage]);
 
   const renderPage = () => {
     switch (currentPage) {

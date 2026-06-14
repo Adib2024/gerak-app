@@ -231,10 +231,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // ── Supabase: restore session on app load ──────────────────────────
   useEffect(() => {
+    const isRecovery = window.location.hash.includes('type=recovery');
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) loadProfile(session.user.id);
+      if (session?.user && !isRecovery) loadProfile(session.user.id);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        _setCurrentPage('reset-password');
+        return;
+      }
       if (!session) {
         setUser(prev => ({ ...prev, isLoggedIn: false }));
       }
