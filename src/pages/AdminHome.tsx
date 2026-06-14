@@ -673,8 +673,8 @@ export const AdminHome: React.FC = () => {
       <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm flex-wrap">
         {([
           { id: 'orders',   label: 'Orders',    icon: BarChart3,  superadminOnly: false },
-          { id: 'drivers',  label: 'Drivers',   icon: Car,        superadminOnly: false },
-          { id: 'users',    label: 'Users',     icon: Users,      superadminOnly: false },
+          { id: 'drivers',  label: 'Invite',    icon: Car,        superadminOnly: false },
+          { id: 'users',    label: 'Drivers',   icon: Users,      superadminOnly: false },
           { id: 'banners',  label: 'Banners',   icon: Megaphone,     superadminOnly: false },
           { id: 'receipts', label: 'Receipts',  icon: FileImage,     superadminOnly: true  },
           { id: 'calendar', label: 'Calendar',  icon: CalendarDays,  superadminOnly: false },
