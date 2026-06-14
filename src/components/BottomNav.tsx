@@ -6,7 +6,7 @@ import { Home, UserCircle, Briefcase, LayoutDashboard, CalendarDays } from 'luci
 export const BottomNav: React.FC = () => {
   const { currentPage, setCurrentPage, user } = useApp();
 
-  if (currentPage === 'splash' || currentPage === 'login' || currentPage === 'register') {
+  if (currentPage === 'splash' || currentPage === 'login' || currentPage === 'register' || currentPage === 'forgot-password' || currentPage === 'reset-password') {
     return null;
   }
 
