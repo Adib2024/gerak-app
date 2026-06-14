@@ -292,6 +292,7 @@ export const AdminHome: React.FC = () => {
   const [searchResult, setSearchResult]     = useState<ProfileUser | null | 'not_found'>(null);
   const [searching, setSearching]           = useState(false);
   const [pendingAction, setPendingAction]   = useState<PendingAction | null>(null);
+  const [staffFilter, setStaffFilter]       = useState<'all' | 'drivers' | 'admins'>('all');
 
   // Banners state
   const [announcements, setAnnouncements]       = useState<Announcement[]>([]);
@@ -946,27 +947,50 @@ export const AdminHome: React.FC = () => {
               <Users className="w-4 h-4" /> Admins &amp; Drivers
             </h3>
 
+            {/* Filter toggle */}
+            <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
+              {([
+                { id: 'all',     label: 'All' },
+                { id: 'drivers', label: '🚗 Drivers' },
+                { id: 'admins',  label: '⚙️ Admins' },
+              ] as const).map(f => (
+                <button key={f.id} onClick={() => setStaffFilter(f.id)}
+                  className={`flex-1 py-1.5 rounded-xl text-[10px] font-extrabold transition ${
+                    staffFilter === f.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             {usersLoading ? (
               <div className="flex justify-center py-8">
                 <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
               </div>
-            ) : profileUsers.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">No staff accounts found</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {profileUsers.map(u => (
-                  <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
-                    togglingStatus={togglingStatus} terminating={terminating}
-                    togglingCap={togglingCap} togglingCampus={togglingCampus} togglingRole={togglingRole}
-                    onToggle={u => setPendingAction({ type: 'toggle-status', u })}
-                    onTerminate={u => setPendingAction({ type: 'terminate', u })}
-                    onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
-                    onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
-                    onRoleToggle={user.role === 'superadmin' ? (u, newRole) => setPendingAction({ type: 'toggle-role', u, newRole }) : undefined}
-                    roleStyle={ROLE_STYLE} />
-                ))}
-              </div>
-            )}
+            ) : (() => {
+              const filtered = profileUsers.filter(u =>
+                staffFilter === 'all'     ? true :
+                staffFilter === 'drivers' ? u.role === 'driver' :
+                ['admin', 'superadmin'].includes(u.role)
+              );
+              return filtered.length === 0
+                ? <p className="text-xs text-slate-400 text-center py-4">No {staffFilter === 'all' ? 'staff' : staffFilter} found</p>
+                : (
+                  <div className="flex flex-col gap-2">
+                    {filtered.map(u => (
+                      <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
+                        togglingStatus={togglingStatus} terminating={terminating}
+                        togglingCap={togglingCap} togglingCampus={togglingCampus} togglingRole={togglingRole}
+                        onToggle={u => setPendingAction({ type: 'toggle-status', u })}
+                        onTerminate={u => setPendingAction({ type: 'terminate', u })}
+                        onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
+                        onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
+                        onRoleToggle={user.role === 'superadmin' ? (u, newRole) => setPendingAction({ type: 'toggle-role', u, newRole }) : undefined}
+                        roleStyle={ROLE_STYLE} />
+                    ))}
+                  </div>
+                );
+            })()}
           </div>
         </div>
       )}
