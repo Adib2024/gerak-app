@@ -98,6 +98,9 @@ interface AppContextType {
   setCurrentPage: (page: ActivePage) => void;
   goBack: () => void;
   canGoBack: boolean;
+  isPreviewMode: boolean;
+  enterPreviewMode: () => void;
+  exitPreviewMode: () => void;
   user: UserSession;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
   register: (name: string, matricNo: string, email: string, password: string, phone: string, university: string, campus: string) => Promise<{ error: string | null }>;
@@ -131,6 +134,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Navigation & Session
   const [currentPage, _setCurrentPage] = useState<ActivePage>('splash');
   const [pageHistory, setPageHistory] = useState<ActivePage[]>([]);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   const HISTORY_EXCLUDED: ActivePage[] = ['splash', 'login'];
   const HOME_PAGES: ActivePage[] = ['dashboard', 'driver-home', 'admin-home'];
@@ -380,6 +384,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
 
+  const enterPreviewMode = () => {
+    setIsPreviewMode(true);
+    setPageHistory([]);
+    _setCurrentPage('dashboard');
+  };
+
+  const exitPreviewMode = () => {
+    setIsPreviewMode(false);
+    setPageHistory([]);
+    if (user.role === 'driver') _setCurrentPage('driver-home');
+    else if (user.role === 'admin' || user.role === 'superadmin') _setCurrentPage('admin-home');
+    else _setCurrentPage('dashboard');
+  };
+
   const logout = () => {
     setPageHistory([]);
     setUser({ name: '', matricNo: '', email: '', phone: '', university: '', campus: '', gerakId: '', role: 'customer', status: 'active', vehicle: '', plateNumber: '', feeReceiptUrl: '', feeReceiptVerified: false, feeReceiptAmount: '', feeReceiptDate: '', feeReceiptExpiry: '', feeReceiptRejectReason: '', canDrive: false, canRent: false, points: 0, isLoggedIn: false });
@@ -585,6 +603,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentPage,
         goBack,
         canGoBack: pageHistory.length > 0,
+        isPreviewMode,
+        enterPreviewMode,
+        exitPreviewMode,
         user,
         login,
         register,
