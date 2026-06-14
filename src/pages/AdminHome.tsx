@@ -108,6 +108,12 @@ interface DriverReceipt {
   fee_receipt_reject_reason: string;
 }
 
+type PendingAction =
+  | { type: 'toggle-status'; u: ProfileUser }
+  | { type: 'terminate';     u: ProfileUser }
+  | { type: 'toggle-cap';    u: ProfileUser; canDrive: boolean; canRent: boolean }
+  | { type: 'campus';        u: ProfileUser; campus: 'Pekan' | 'Gambang' };
+
 // ── Shared user card ────────────────────────────────────────────────────────
 const UserCard: React.FC<{
   u: ProfileUser;
@@ -257,6 +263,7 @@ export const AdminHome: React.FC = () => {
   const [searchGerakId, setSearchGerakId]   = useState('');
   const [searchResult, setSearchResult]     = useState<ProfileUser | null | 'not_found'>(null);
   const [searching, setSearching]           = useState(false);
+  const [pendingAction, setPendingAction]   = useState<PendingAction | null>(null);
 
   // Banners state
   const [announcements, setAnnouncements]       = useState<Announcement[]>([]);
@@ -490,6 +497,15 @@ export const AdminHome: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'users') loadUsers();
   }, [activeTab, loadUsers]);
+
+  const executePendingAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.type === 'toggle-status') handleToggleStatus(pendingAction.u);
+    else if (pendingAction.type === 'terminate')  handleTerminate(pendingAction.u);
+    else if (pendingAction.type === 'toggle-cap') handleToggleCapability(pendingAction.u, pendingAction.canDrive, pendingAction.canRent);
+    else if (pendingAction.type === 'campus')     handleChangeCampus(pendingAction.u, pendingAction.campus);
+    setPendingAction(null);
+  };
 
   const canManage = (targetRole: string, targetId: string) => {
     if (targetId === (supabase.auth as any)._currentUser?.id) return false;
@@ -877,9 +893,10 @@ export const AdminHome: React.FC = () => {
                   <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
                     togglingStatus={togglingStatus} terminating={terminating}
                     togglingCap={togglingCap} togglingCampus={togglingCampus}
-                    onToggle={handleToggleStatus} onTerminate={handleTerminate}
-                    onCapToggle={user.role === 'superadmin' ? handleToggleCapability : undefined}
-                    onCampusChange={user.role === 'superadmin' ? handleChangeCampus : undefined}
+                    onToggle={u => setPendingAction({ type: 'toggle-status', u })}
+                    onTerminate={u => setPendingAction({ type: 'terminate', u })}
+                    onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
+                    onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
                     roleStyle={ROLE_STYLE} />
                 ))}
               </div>
@@ -1528,6 +1545,59 @@ export const AdminHome: React.FC = () => {
       )}
 
     </div>
+
+    {/* ── Driver Action Confirmation Modal ── */}
+    {pendingAction && (() => {
+      const { u } = pendingAction;
+      const isTerminate = pendingAction.type === 'terminate';
+      const isStop = pendingAction.type === 'toggle-status' && u.status === 'active';
+
+      const title =
+        pendingAction.type === 'terminate'     ? `Terminate ${u.name}?` :
+        pendingAction.type === 'toggle-status' ? (isStop ? `Suspend ${u.name}?` : `Reactivate ${u.name}?`) :
+        pendingAction.type === 'toggle-cap'    ? `Update capabilities for ${u.name}?` :
+        `Move ${u.name} to UMPSA ${pendingAction.campus}?`;
+
+      const desc =
+        isTerminate ? 'This will permanently remove their account. This cannot be undone.' :
+        isStop      ? 'They will lose access to the app until reactivated.' :
+        pendingAction.type === 'toggle-status' ? 'They will regain access to the app.' :
+        pendingAction.type === 'toggle-cap'    ? 'Their service capabilities will be updated immediately.' :
+        'Their campus assignment will change immediately.';
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
+          onClick={() => setPendingAction(null)}>
+          <div className="w-full max-w-sm bg-white rounded-t-3xl p-6 pb-10 shadow-2xl animate-slide-up"
+            onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+            <div className={`w-10 h-10 rounded-2xl mx-auto mb-3 flex items-center justify-center ${
+              isTerminate ? 'bg-red-100' : isStop ? 'bg-amber-100' : 'bg-primary/10'
+            }`}>
+              {isTerminate
+                ? <Trash2 className="w-5 h-5 text-red-500" />
+                : isStop
+                  ? <span className="text-amber-600 font-black text-sm">✕</span>
+                  : <span className="text-primary font-black text-sm">✓</span>}
+            </div>
+            <h3 className="text-sm font-black text-slate-800 text-center mb-1">{title}</h3>
+            <p className="text-[11px] text-slate-400 font-semibold text-center mb-6">{desc}</p>
+            <div className="flex gap-3">
+              <button onClick={() => setPendingAction(null)}
+                className="flex-1 bg-slate-100 text-slate-600 font-extrabold text-xs py-3 rounded-2xl transition active:scale-95">
+                Cancel
+              </button>
+              <button onClick={executePendingAction}
+                className={`flex-1 font-extrabold text-xs py-3 rounded-2xl transition active:scale-95 text-white ${
+                  isTerminate ? 'bg-red-500' : isStop ? 'bg-amber-500' : 'bg-primary'
+                }`}>
+                Yes, Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
 
     {/* ── Invite Confirmation Modal ── */}
     {showInviteConfirm && (
