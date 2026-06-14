@@ -686,7 +686,7 @@ export const AdminHome: React.FC = () => {
                 activeTab === tab.id ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
               }`}
             >
-              <tab.icon className="w-3.5 h-3.5" /> {tab.label}
+              {tab.label}
             </button>
           ))}
       </div>
