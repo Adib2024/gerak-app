@@ -7,7 +7,7 @@ export const Header: React.FC = () => {
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  if (currentPage === 'splash' || currentPage === 'login' || currentPage === 'register') {
+  if (currentPage === 'splash' || currentPage === 'login' || currentPage === 'register' || currentPage === 'forgot-password' || currentPage === 'reset-password') {
     return null;
   }
 

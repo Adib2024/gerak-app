@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
+import { supabase } from './lib/supabase';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { SplashScreen } from './pages/SplashScreen';
@@ -15,6 +16,8 @@ import { AdminHome } from './pages/AdminHome';
 import { MyOrders } from './pages/MyOrders';
 import { GerakRental } from './pages/GerakRental';
 import { AcademicCalendar } from './pages/AcademicCalendar';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -256,7 +259,14 @@ const SwipeBackGesture: React.FC<{ children: React.ReactNode }> = ({ children })
 };
 
 const AppContent: React.FC = () => {
-  const { currentPage } = useApp();
+  const { currentPage, setCurrentPage } = useApp();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setCurrentPage('reset-password');
+    });
+    return () => subscription.unsubscribe();
+  }, [setCurrentPage]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -286,6 +296,10 @@ const AppContent: React.FC = () => {
         return <GerakRental />;
       case 'academic-calendar':
         return <AcademicCalendar />;
+      case 'forgot-password':
+        return <ForgotPassword />;
+      case 'reset-password':
+        return <ResetPassword />;
       default:
         return <Dashboard />;
     }

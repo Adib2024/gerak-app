@@ -15,7 +15,9 @@ export type ActivePage =
   | 'admin-home'
   | 'my-orders'
   | 'gerak-rental'
-  | 'academic-calendar';
+  | 'academic-calendar'
+  | 'forgot-password'
+  | 'reset-password';
 
 export interface UserSession {
   name: string;

@@ -125,15 +125,23 @@ export const Login: React.FC = () => {
         </form>
       </div>
 
-      {/* Register link */}
-      <div className="text-center mb-4">
-        <span className="text-xs text-slate-400 font-semibold">New student on campus? </span>
+      {/* Footer links */}
+      <div className="flex flex-col items-center gap-2 mb-4">
         <button
-          onClick={() => setCurrentPage('register')}
-          className="text-xs text-primary font-bold hover:underline active:scale-95 transition"
+          onClick={() => setCurrentPage('forgot-password')}
+          className="text-xs text-slate-400 font-semibold hover:text-primary active:scale-95 transition"
         >
-          Create Gerak Account
+          Forgot password?
         </button>
+        <div>
+          <span className="text-xs text-slate-400 font-semibold">New student on campus? </span>
+          <button
+            onClick={() => setCurrentPage('register')}
+            className="text-xs text-primary font-bold hover:underline active:scale-95 transition"
+          >
+            Create Gerak Account
+          </button>
+        </div>
       </div>
     </div>
   );
