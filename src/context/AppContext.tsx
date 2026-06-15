@@ -390,8 +390,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProfile = async (updates: { name?: string; matricNo?: string; email?: string; phone?: string; vehicle?: string; plateNumber?: string; feeReceiptUrl?: string }): Promise<{ error: string | null }> => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser) return { error: 'Not authenticated' };
+    let { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      authUser = refreshed?.user ?? null;
+    }
+    if (!authUser) return { error: 'Session expired — please log out and log in again.' };
     const row: Record<string, string> = {};
     if (updates.name           !== undefined) row.name            = updates.name;
     if (updates.matricNo       !== undefined) row.matric_no       = updates.matricNo;
