@@ -1,5 +1,5 @@
 import React from 'react';
-import { WaIcon } from '../lib/whatsapp';
+import { WaBtn } from '../lib/whatsapp';
 
 export interface OrderReceiptFields {
   id: string;
@@ -51,16 +51,7 @@ export const OrderReceiptBlock: React.FC<{ order: OrderReceiptFields; showWhatsA
     <p className="flex items-center gap-2">
       <span className="text-slate-400">Contact:</span>
       <span>{order.contact}</span>
-      {showWhatsApp && (
-        <a
-          href={`https://wa.me/${order.contact.replace(/\D/g, '').replace(/^0/, '60')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-        >
-          <WaIcon className="w-5 h-5" />
-        </a>
-      )}
+      {showWhatsApp && <WaBtn phone={order.contact} />}
     </p>
     <p><span className="text-slate-400">Est. Fare:</span> {fareLabel(order)}</p>
     {order.notes && <p><span className="text-slate-400">Remark:</span> {order.notes}</p>}
