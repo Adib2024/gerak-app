@@ -212,7 +212,7 @@ export const Profile: React.FC = () => {
           <div className="flex-1 min-w-0 pr-3">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Full Name</span>
             {editMode ? (
-              <input value={draftName} onChange={e => setDraftName(e.target.value)}
+              <input value={draftName} onChange={e => setDraftName(e.target.value.replace(/\b\w/g, c => c.toUpperCase()))}
                 className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="Full name" />
             ) : <span className="text-sm font-medium text-slate-700 mt-1 block">{user.name || '—'}</span>}

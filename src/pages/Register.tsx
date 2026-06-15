@@ -160,7 +160,7 @@ export const Register: React.FC = () => {
               <input
                 type="text"
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => setName(e.target.value.replace(/\b\w/g, c => c.toUpperCase()))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="Full name"
                 required
