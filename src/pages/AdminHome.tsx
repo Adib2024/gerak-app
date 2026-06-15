@@ -124,21 +124,22 @@ const UserCard: React.FC<{
   terminating: string | null;
   togglingCap?: string | null;
   togglingCampus?: string | null;
-  togglingRole?: string | null;
   onToggle: (u: ProfileUser) => void;
   onTerminate: (u: ProfileUser) => void;
   onCapToggle?: (u: ProfileUser, canDrive: boolean, canRent: boolean) => void;
   onCampusChange?: (u: ProfileUser, campus: 'Pekan' | 'Gambang') => void;
-  onRoleToggle?: (u: ProfileUser, newRole: 'driver' | 'admin') => void;
-  roleStyle: Record<string, string>;
-}> = ({ u, canManage, togglingStatus, terminating, togglingCap, togglingCampus, togglingRole, onToggle, onTerminate, onCapToggle, onCampusChange, onRoleToggle, roleStyle }) => (
+}> = ({ u, canManage, togglingStatus, terminating, togglingCap, togglingCampus, onToggle, onTerminate, onCapToggle, onCampusChange }) => (
   <div className={`rounded-2xl border p-4 flex flex-col gap-2.5 ${
     u.status === 'inactive' ? 'bg-red-50/50 border-red-100' : 'bg-white border-slate-100'
   }`}>
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 flex-wrap">
         <p className="text-xs font-black text-slate-800 truncate">{u.name}</p>
-        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full border uppercase shrink-0 ${roleStyle[u.role] ?? roleStyle.customer}`}>
+        <span className={`text-[10px] font-semibold uppercase shrink-0 ${
+          u.role === 'driver' ? 'text-emerald-600' :
+          u.role === 'admin' || u.role === 'superadmin' ? 'text-blue-600' :
+          'text-slate-400'
+        }`}>
           {u.role}
         </span>
         {u.status === 'inactive' && (
@@ -151,27 +152,6 @@ const UserCard: React.FC<{
       <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
     </div>
 
-    {/* Role pill — superadmin only, driver or admin */}
-    {onRoleToggle && (u.role === 'driver' || u.role === 'admin') && (
-      <div className="flex gap-2">
-        {(['driver', 'admin'] as const).map(r => (
-          <button key={r}
-            onClick={() => u.role !== r && onRoleToggle(u, r)}
-            disabled={togglingRole === u.id || u.role === r}
-            className={`flex-1 font-extrabold text-[10px] py-2 rounded-xl border transition active:scale-95 disabled:opacity-60 ${
-              u.role === r
-                ? r === 'admin'
-                  ? 'bg-violet-50 border-violet-200 text-violet-700'
-                  : 'bg-primary/10 border-primary/30 text-primary'
-                : 'bg-slate-50 border-slate-200 text-slate-400'
-            }`}>
-            {togglingRole === u.id
-              ? <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin inline-block" />
-              : r === 'driver' ? '🚗 Driver' : '⚙️ Admin'}
-          </button>
-        ))}
-      </div>
-    )}
 
     {/* Capability toggles — drivers only */}
     {u.role === 'driver' && onCapToggle && (
@@ -280,7 +260,6 @@ export const AdminHome: React.FC = () => {
   const [inviteSending, setInviteSending]   = useState(false);
   const [togglingCap, setTogglingCap]         = useState<string | null>(null);
   const [togglingCampus, setTogglingCampus]   = useState<string | null>(null);
-  const [togglingRole, setTogglingRole]       = useState<string | null>(null);
   const [showInviteConfirm, setShowInviteConfirm] = useState(false);
 
   // Users management state
@@ -529,9 +508,7 @@ export const AdminHome: React.FC = () => {
   }, [activeTab, loadUsers]);
 
   const handleToggleRole = async (u: ProfileUser, newRole: 'driver' | 'admin') => {
-    setTogglingRole(u.id);
     const { error } = await supabase.rpc('toggle_user_role', { p_target_id: u.id, p_new_role: newRole });
-    setTogglingRole(null);
     if (error) showToast('Failed to change role.');
     else { showToast(`${u.name} is now ${newRole === 'admin' ? 'Admin + Driver' : 'Driver only'}.`); loadUsers(); }
   };
@@ -679,13 +656,6 @@ export const AdminHome: React.FC = () => {
     expired:  'bg-red-50 text-red-600 border-red-200',
     rejected: 'bg-orange-50 text-orange-600 border-orange-200',
     pending:  'bg-amber-50 text-amber-700 border-amber-200',
-  };
-
-  const ROLE_STYLE: Record<string, string> = {
-    superadmin: 'bg-purple-50 text-purple-700 border-purple-200',
-    admin:      'bg-blue-50 text-blue-700 border-blue-200',
-    driver:     'bg-emerald-50 text-emerald-700 border-emerald-200',
-    customer:   'bg-slate-50 text-slate-500 border-slate-200',
   };
 
   // Guard — redirect non-admin users
@@ -936,8 +906,7 @@ export const AdminHome: React.FC = () => {
                 togglingCap={togglingCap} togglingCampus={togglingCampus}
                 onToggle={handleToggleStatus} onTerminate={handleTerminate}
                 onCapToggle={user.role === 'superadmin' ? handleToggleCapability : undefined}
-                onCampusChange={user.role === 'superadmin' ? handleChangeCampus : undefined}
-                roleStyle={ROLE_STYLE} />
+                onCampusChange={user.role === 'superadmin' ? handleChangeCampus : undefined} />
             )}
           </div>
 
@@ -980,13 +949,11 @@ export const AdminHome: React.FC = () => {
                     {filtered.map(u => (
                       <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
                         togglingStatus={togglingStatus} terminating={terminating}
-                        togglingCap={togglingCap} togglingCampus={togglingCampus} togglingRole={togglingRole}
+                        togglingCap={togglingCap} togglingCampus={togglingCampus}
                         onToggle={u => setPendingAction({ type: 'toggle-status', u })}
                         onTerminate={u => setPendingAction({ type: 'terminate', u })}
                         onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
-                        onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
-                        onRoleToggle={user.role === 'superadmin' ? (u, newRole) => setPendingAction({ type: 'toggle-role', u, newRole }) : undefined}
-                        roleStyle={ROLE_STYLE} />
+                        onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined} />
                     ))}
                   </div>
                 );
