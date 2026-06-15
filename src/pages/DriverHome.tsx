@@ -626,21 +626,23 @@ export const DriverHome: React.FC = () => {
               </div>
 
               <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-                <div className="px-5 pt-5 pb-4 flex items-start justify-between gap-3">
-                  <div>
+                <div className="px-5 pt-5 pb-4 flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between gap-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Customer</p>
-                    <p className="text-sm font-black text-slate-800 mt-0.5 leading-tight">{myJob.customer_name}</p>
-                    <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                      <Users className="w-3 h-3" /> {myJob.passengers} passenger{myJob.passengers > 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <div className="text-right">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fare</p>
-                    <p className="text-base font-black text-slate-800 mt-0.5">{fmt(myJob)}</p>
-                    {myJob.night_charge > 0 && (
-                      <p className="text-[9px] text-amber-500 font-bold mt-0.5">Night +RM{myJob.night_charge}</p>
-                    )}
                   </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-black text-slate-800 leading-tight">{myJob.customer_name}</p>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-black text-slate-800">{fmt(myJob)}</p>
+                      {myJob.night_charge > 0 && (
+                        <p className="text-[9px] text-amber-500 font-bold">Night +RM{myJob.night_charge}</p>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                    <Users className="w-3 h-3" /> {myJob.passengers} passenger{myJob.passengers > 1 ? 's' : ''}
+                  </p>
                 </div>
 
                 <div className="mx-4 mb-4 bg-slate-50 rounded-2xl px-4 py-3 flex flex-col gap-2.5">
