@@ -1,4 +1,5 @@
 import React from 'react';
+import { WaIcon } from '../lib/whatsapp';
 
 export interface OrderReceiptFields {
   id: string;
@@ -53,7 +54,7 @@ export const OrderReceiptBlock: React.FC<{ order: OrderReceiptFields }> = ({ ord
   </div>
 );
 
-export const OrderReceiptSheet: React.FC<{ order: OrderReceiptFields; onClose: () => void }> = ({ order, onClose }) => {
+export const OrderReceiptSheet: React.FC<{ order: OrderReceiptFields; onClose: () => void; showWhatsApp?: boolean }> = ({ order, onClose, showWhatsApp }) => {
   const badgeCls  = STATUS_STYLE[order.status] ?? STATUS_STYLE.cancelled;
   const badgeLbl  = STATUS_LABEL[order.status] ?? order.status;
   const createdAt = new Date(order.created_at)
@@ -84,6 +85,18 @@ export const OrderReceiptSheet: React.FC<{ order: OrderReceiptFields; onClose: (
           </div>
 
           <OrderReceiptBlock order={order} />
+
+          {showWhatsApp && (
+            <a
+              href={`https://wa.me/${order.contact.replace(/\D/g, '').replace(/^0/, '60')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white font-extrabold text-xs py-3 rounded-2xl active:scale-95 transition shadow-md shadow-[#25D366]/20"
+              onClick={e => e.stopPropagation()}
+            >
+              <WaIcon className="w-4 h-4" /> WhatsApp Customer
+            </a>
+          )}
 
           <button onClick={onClose}
             className="w-full py-3 rounded-2xl bg-slate-100 text-slate-500 font-extrabold text-xs active:scale-95 transition">

@@ -516,7 +516,13 @@ export const DriverHome: React.FC = () => {
 
   return (
   <>
-    {sheetOrder && <OrderReceiptSheet order={sheetOrder} onClose={() => setSheetOrder(null)} />}
+    {sheetOrder && (
+      <OrderReceiptSheet
+        order={sheetOrder}
+        onClose={() => setSheetOrder(null)}
+        showWhatsApp={sheetOrder.status === 'completed'}
+      />
+    )}
     <div className="flex-grow bg-slate-50 overflow-y-auto no-scrollbar pb-6 flex flex-col animate-fade-in">
 
       {/* ── Header ── */}
@@ -926,13 +932,18 @@ export const DriverHome: React.FC = () => {
           )}
 
           {/* ── History ── */}
-          {myHistory.length > 0 && (
+          {(() => {
+            const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+            const visibleHistory = myHistory.filter(o =>
+              o.status !== 'cancelled' || new Date(o.created_at).getTime() >= thirtyDaysAgo
+            );
+            return visibleHistory.length > 0 && (
             <div className="flex flex-col gap-3">
               <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pt-1">
                 <Clock className="w-3.5 h-3.5" /> Trip History
               </h3>
 
-              {myHistory.map(order => {
+              {visibleHistory.map(order => {
                 const st = HISTORY_STATUS[order.status] ?? HISTORY_STATUS.cancelled;
                 return (
                   <div key={order.id} className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden cursor-pointer" onClick={() => setSheetOrder(order)}>
@@ -974,7 +985,8 @@ export const DriverHome: React.FC = () => {
                 );
               })}
             </div>
-          )}
+            );
+          })()}
 
           {!myJob && myHistory.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
