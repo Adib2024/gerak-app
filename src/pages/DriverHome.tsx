@@ -368,17 +368,43 @@ export const DriverHome: React.FC = () => {
   const notifTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notifCount  = useRef(0);
 
+  const playChime = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const playTone = (freq: number, start: number, dur: number) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.35, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+        osc.start(start);
+        osc.stop(start + dur);
+      };
+      playTone(880,  ctx.currentTime,        0.18); // A5 — first ding
+      playTone(1108, ctx.currentTime + 0.18, 0.35); // C#6 — second ding
+    } catch {
+      // AudioContext blocked — silent fallback
+    }
+  }, []);
+
   const fireNotification = useCallback(() => {
-    if (!('Notification' in window) || Notification.permission !== 'granted') return;
     const count = notifCount.current;
     notifCount.current = 0;
-    new Notification('Gerak — New Ride Request', {
-      body: count > 1 ? `${count} new ride requests in queue` : 'A new ride request is waiting for you.',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'gerak-new-order',       // replaces previous notification of same tag
-    });
-  }, []);
+    playChime();
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Gerak — New Ride Request', {
+        body: count > 1 ? `${count} new ride requests in queue` : 'A new ride request is waiting for you.',
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: 'gerak-new-order',
+      });
+    }
+  }, [playChime]);
 
   useEffect(() => {
     if (!user.canDrive) { setLoading(false); return; }
