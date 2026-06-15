@@ -684,7 +684,8 @@ export const Transport: React.FC = () => {
                 </span>
               </div>
               <input type="text" value={notes}
-                onChange={e => setNotes(e.target.value)}
+                onChange={e => setNotes(e.target.value.slice(0, 500))}
+                maxLength={500}
                 className="absolute inset-0 w-full h-full rounded-lg bg-transparent focus:outline-none cursor-text"
                 style={{ fontSize: '16px', color: 'transparent', caretColor: '#EF4444' }}
                 autoComplete="off" autoCorrect="off" />

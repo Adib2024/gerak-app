@@ -578,6 +578,8 @@ export const AdminHome: React.FC = () => {
   }, []);
 
   const handleToggleCapability = async (u: ProfileUser, canDrive: boolean, canRent: boolean) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) { showToast('Session expired — please log in again.'); return; }
     setTogglingCap(u.id);
     const { error } = await supabase.rpc('set_driver_capabilities', {
       p_user_id:  u.id,
