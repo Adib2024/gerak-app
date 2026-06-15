@@ -289,11 +289,7 @@ export const MyOrders: React.FC = () => {
                 <p><span className="text-slate-400">Pick-up:</span> {o.pickup}</p>
                 <p><span className="text-slate-400">Destination:</span> {o.destination}</p>
                 <p><span className="text-slate-400">Passengers:</span> {o.passengers} pax</p>
-                <span className="flex items-center gap-1.5">
-                  <span className="text-slate-400">Contact:</span>
-                  <span>{o.contact}</span>
-                  <WaBtn phone={o.contact} />
-                </span>
+                <p><span className="text-slate-400">Contact:</span> {o.contact}</p>
                 <p><span className="text-slate-400">Est. Fare:</span> {totalFare(o)}</p>
                 {o.notes && <p><span className="text-slate-400">Remark:</span> {o.notes}</p>}
 
