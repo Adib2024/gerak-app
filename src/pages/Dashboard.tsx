@@ -295,7 +295,7 @@ export const Dashboard: React.FC = () => {
 
           <div className="flex items-center gap-4 pl-1">
             <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center group-active:bg-amber-500 group-active:text-white transition duration-300">
-              <KeyRound className="w-6 h-6" />
+              <KeyRound className="w-5 h-5" />
             </div>
             <div>
               <h4 className="text-base font-extrabold text-slate-800 m-0">Gerak Rental</h4>
