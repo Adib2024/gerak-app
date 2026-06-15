@@ -698,7 +698,24 @@ export const DriverHome: React.FC = () => {
 
                   {/* WhatsApp */}
                   <a
-                    href={`https://wa.me/${myJob.contact.replace(/\D/g,'').replace(/^0/,'60')}?text=${encodeURIComponent(`Hi, I'm your Gerak driver. I've accepted your ride on ${myJob.date} at ${myJob.time}. On my way! 🚗`)}`}
+                    href={(() => {
+                      const phone = myJob.contact.replace(/\D/g,'').replace(/^0/,'60');
+                      const [y, m, d] = myJob.date.split('-');
+                      const dateFormatted = `${d}/${m}/${y}`;
+                      const msg = [
+                        `Hi, I'm your Gerak driver. I've accepted your ride order. Here are the details:`,
+                        ``,
+                        `📅 Date: ${dateFormatted}`,
+                        `⏰ Time: ${myJob.time}`,
+                        `📍 Pickup: ${myJob.pickup}`,
+                        `🏁 Destination: ${myJob.destination}`,
+                        `👥 Passengers: ${myJob.passengers}`,
+                        `📱 Contact: ${myJob.contact}`,
+                        ``,
+                        `See you soon! 🚗`,
+                      ].join('\n');
+                      return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                    })()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#25D366] active:scale-90 transition shrink-0"
