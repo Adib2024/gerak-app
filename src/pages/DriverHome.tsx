@@ -705,14 +705,14 @@ export const DriverHome: React.FC = () => {
                       const msg = [
                         `Hi, I'm your Gerak driver. I've accepted your ride order. Here are the details:`,
                         ``,
-                        `📅 Date: ${dateFormatted}`,
-                        `⏰ Time: ${myJob.time}`,
-                        `📍 Pickup: ${myJob.pickup}`,
-                        `🏁 Destination: ${myJob.destination}`,
-                        `👥 Passengers: ${myJob.passengers}`,
-                        `📱 Contact: ${myJob.contact}`,
+                        `Date: ${dateFormatted}`,
+                        `Time: ${myJob.time}`,
+                        `Pickup: ${myJob.pickup}`,
+                        `Destination: ${myJob.destination}`,
+                        `Passengers: ${myJob.passengers}`,
+                        `Contact: ${myJob.contact}`,
                         ``,
-                        `See you soon! 🚗`,
+                        `See you soon!`,
                       ].join('\n');
                       return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
                     })()}
