@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 // Definitions
@@ -159,6 +159,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return prev.slice(0, -1);
     });
   };
+
+  // Android back button — intercept system popstate so the PWA doesn't close
+  const pageHistoryRef = useRef(pageHistory);
+  useEffect(() => { pageHistoryRef.current = pageHistory; }, [pageHistory]);
+  useEffect(() => {
+    window.history.pushState(null, '');
+    const handlePopState = () => {
+      if (pageHistoryRef.current.length > 0) {
+        goBack();
+      }
+      // Always re-push so the browser never runs out of history entries
+      window.history.pushState(null, '');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [user, setUser] = useState<UserSession>({
     name: '',
     matricNo: '',
