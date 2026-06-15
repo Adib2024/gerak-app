@@ -356,15 +356,46 @@ export const DriverHome: React.FC = () => {
     setLoading(false);
   }, [campusFilter]);
 
+  // Request notification permission once when driver loads
+  useEffect(() => {
+    if (!user.canDrive) return;
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, [user.canDrive]);
+
+  // Debounce ref: group rapid-fire inserts into one notification
+  const notifTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notifCount  = useRef(0);
+
+  const fireNotification = useCallback(() => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const count = notifCount.current;
+    notifCount.current = 0;
+    new Notification('Gerak — New Ride Request', {
+      body: count > 1 ? `${count} new ride requests in queue` : 'A new ride request is waiting for you.',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: 'gerak-new-order',       // replaces previous notification of same tag
+    });
+  }, []);
+
   useEffect(() => {
     if (!user.canDrive) { setLoading(false); return; }
     loadOrders();
     const channel = supabase
       .channel('ride_orders_driver')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ride_orders' }, loadOrders)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ride_orders' }, (payload) => {
+        loadOrders();
+        if (payload.eventType === 'INSERT') {
+          notifCount.current += 1;
+          if (notifTimer.current) clearTimeout(notifTimer.current);
+          notifTimer.current = setTimeout(fireNotification, 3000);
+        }
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [loadOrders, user.canDrive]);
+  }, [loadOrders, user.canDrive, fireNotification]);
 
   useEffect(() => {
     if (!user.canRent) return;
