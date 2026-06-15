@@ -36,7 +36,7 @@ const STATUS_LABEL: Record<string, string> = {
 const fareLabel = (o: OrderReceiptFields) =>
   o.fare === 'TBC' ? 'TBC' : `RM${(Number(o.fare) + (o.night_charge ?? 0)).toFixed(2)}`;
 
-export const OrderReceiptBlock: React.FC<{ order: OrderReceiptFields }> = ({ order }) => (
+export const OrderReceiptBlock: React.FC<{ order: OrderReceiptFields; showWhatsApp?: boolean }> = ({ order, showWhatsApp }) => (
   <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs font-mono text-slate-700 space-y-1.5 leading-relaxed">
     <p><span className="text-slate-400">Date:</span>{' '}<span className="text-blue-600 font-bold">{order.date}</span></p>
     <p>
@@ -48,7 +48,20 @@ export const OrderReceiptBlock: React.FC<{ order: OrderReceiptFields }> = ({ ord
     <p><span className="text-slate-400">Pick-up:</span> {order.pickup}</p>
     <p><span className="text-slate-400">Destination:</span> {order.destination}</p>
     <p><span className="text-slate-400">Passengers:</span> {order.passengers} pax</p>
-    <p><span className="text-slate-400">Contact:</span> {order.contact}</p>
+    <p className="flex items-center gap-2">
+      <span className="text-slate-400">Contact:</span>
+      <span>{order.contact}</span>
+      {showWhatsApp && (
+        <a
+          href={`https://wa.me/${order.contact.replace(/\D/g, '').replace(/^0/, '60')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+        >
+          <WaIcon className="w-5 h-5" />
+        </a>
+      )}
+    </p>
     <p><span className="text-slate-400">Est. Fare:</span> {fareLabel(order)}</p>
     {order.notes && <p><span className="text-slate-400">Remark:</span> {order.notes}</p>}
   </div>
@@ -84,19 +97,7 @@ export const OrderReceiptSheet: React.FC<{ order: OrderReceiptFields; onClose: (
             <span className="text-[10px] text-slate-400 font-semibold">{createdAt}</span>
           </div>
 
-          <OrderReceiptBlock order={order} />
-
-          {showWhatsApp && (
-            <a
-              href={`https://wa.me/${order.contact.replace(/\D/g, '').replace(/^0/, '60')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white font-extrabold text-xs py-3 rounded-2xl active:scale-95 transition shadow-md shadow-[#25D366]/20"
-              onClick={e => e.stopPropagation()}
-            >
-              <WaIcon className="w-4 h-4" /> WhatsApp Customer
-            </a>
-          )}
+          <OrderReceiptBlock order={order} showWhatsApp={showWhatsApp} />
 
           <button onClick={onClose}
             className="w-full py-3 rounded-2xl bg-slate-100 text-slate-500 font-extrabold text-xs active:scale-95 transition">
