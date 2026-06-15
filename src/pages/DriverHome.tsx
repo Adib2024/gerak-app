@@ -62,6 +62,7 @@ interface RideOrder {
   driver_id: string | null;
   driver_name: string | null;
   created_at: string;
+  accepted_at: string | null;
 }
 
 type DriverTab = 'pool' | 'my-jobs' | 'rental';
@@ -82,6 +83,7 @@ export const DriverHome: React.FC = () => {
   const [myHistory, setMyHistory]           = useState<RideOrder[]>([]);
   const [accepting, setAccepting]           = useState<string | null>(null);
   const [updating, setUpdating]             = useState(false);
+  const [cancelSecsLeft, setCancelSecsLeft] = useState<number>(0);
   const [toast, setToast]                   = useState('');
   const [loading, setLoading]               = useState(true);
   const [newPing, setNewPing]               = useState(false);
@@ -323,6 +325,38 @@ export const DriverHome: React.FC = () => {
     if (status === 'completed') showToast('Trip completed!');
     loadOrders();
   };
+
+  // Countdown timer — ticks every second while job is accepted
+  useEffect(() => {
+    if (!myJob || myJob.status !== 'accepted' || !myJob.accepted_at) {
+      setCancelSecsLeft(0);
+      return;
+    }
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - new Date(myJob.accepted_at!).getTime()) / 1000);
+      setCancelSecsLeft(Math.max(0, 180 - elapsed));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [myJob?.id, myJob?.status, myJob?.accepted_at]);
+
+  const handleCancel = async () => {
+    if (cancelSecsLeft <= 0 || !myJob) return;
+    setUpdating(true);
+    const { data, error } = await supabase.rpc('cancel_ride_order', { p_order_id: myJob.id });
+    setUpdating(false);
+    if (error || !data?.success) {
+      showToast(data?.error ?? 'Cannot cancel — window expired.');
+    } else {
+      showToast('Job cancelled. Returned to pool.');
+      setActiveTab('pool');
+      loadOrders();
+    }
+  };
+
+  const fmtCountdown = (secs: number) =>
+    `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, '0')}`;
 
   const fmt = (order: RideOrder) =>
     order.fare === 'TBC' ? 'TBC' : `RM ${(Number(order.fare) + order.night_charge).toFixed(2)}`;
@@ -724,14 +758,15 @@ export const DriverHome: React.FC = () => {
                     <WaIcon className="w-9 h-9" />
                   </a>
 
-                  {/* Cancel — only before trip starts */}
-                  {myJob.status !== 'in_progress' && (
+                  {/* Cancel — only within 3-min window, only before trip starts */}
+                  {myJob.status !== 'in_progress' && cancelSecsLeft > 0 && (
                     <button
-                      onClick={() => handleStatusUpdate(myJob.id, 'cancelled')}
+                      onClick={handleCancel}
                       disabled={updating}
-                      className="flex items-center justify-center gap-1 bg-red-50 border border-red-100 text-red-500 font-extrabold text-xs px-3 py-3 rounded-2xl transition active:scale-95 disabled:opacity-50 shrink-0"
+                      className="flex flex-col items-center justify-center bg-red-50 border border-red-100 text-red-500 font-extrabold text-[9px] px-3 py-2 rounded-2xl transition active:scale-95 disabled:opacity-50 shrink-0"
                     >
-                      <XCircle className="w-3.5 h-3.5" />
+                      <XCircle className="w-3.5 h-3.5 mb-0.5" />
+                      {fmtCountdown(cancelSecsLeft)}
                     </button>
                   )}
                 </div>
