@@ -136,7 +136,7 @@ export const Dashboard: React.FC = () => {
       {(activeRide !== null && activeRide.status !== 'completed') && (
         <div 
           onClick={() => setCurrentPage('transport')}
-          className="mb-4 bg-blue-50 border border-blue-100 hover:bg-blue-100/50 rounded-2xl p-3 shadow-md flex items-center justify-between cursor-pointer animate-pulse-glow"
+          className="mb-4 bg-blue-50 border border-blue-100 active:bg-blue-100/50 rounded-2xl p-3 shadow-md flex items-center justify-between cursor-pointer animate-pulse-glow active:scale-[0.99] transition"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-md">
@@ -190,7 +190,7 @@ export const Dashboard: React.FC = () => {
               </div>
               <button
                 onClick={() => setCurrentPage(ban.page)}
-                className="shrink-0 bg-white/20 hover:bg-white/30 border border-white/30 rounded-xl px-3 py-2 text-[10px] font-extrabold whitespace-nowrap active:scale-95 transition flex items-center gap-1"
+                className="shrink-0 bg-white/20 active:bg-white/30 border border-white/30 rounded-xl px-3 py-2 text-[10px] font-extrabold whitespace-nowrap active:scale-95 transition flex items-center gap-1"
               >
                 {ban.cta} <ArrowRight className="w-3 h-3" />
               </button>
@@ -225,16 +225,14 @@ export const Dashboard: React.FC = () => {
       <div className="flex flex-col gap-4">
         
         {/* A. Transportation Module */}
-        <div 
+        <div
           onClick={() => setCurrentPage('transport')}
-          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] transition duration-200"
+          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm active:scale-[0.99] active:shadow-md transition duration-200"
         >
-          {/* Accent vertical left-border */}
-          <div className="absolute left-0 top-6 bottom-6 w-1 bg-primary rounded-r-lg group-hover:scale-y-110 transition duration-300" />
-          
+          <div className="absolute left-0 top-6 bottom-6 w-1 bg-primary rounded-r-lg group-active:scale-y-110 transition duration-300" />
+
           <div className="flex items-center gap-4 pl-1">
-            {/* Emerald Icon Frame */}
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition duration-300">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-primary flex items-center justify-center group-active:bg-primary group-active:text-white transition duration-300">
               <Car className="w-6 h-6" />
             </div>
             <div>
@@ -244,18 +242,18 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
-          <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition" />
+          <ArrowRight className="w-5 h-5 text-slate-300 group-active:text-primary group-active:translate-x-1 transition" />
         </div>
 
         {/* B. Jubah Delivery Module */}
         <div
           onClick={() => setCurrentPage('jubah')}
-          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] transition duration-200"
+          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm active:scale-[0.99] active:shadow-md transition duration-200"
         >
-          <div className="absolute left-0 top-6 bottom-6 w-1 bg-blue-500 rounded-r-lg group-hover:scale-y-110 transition duration-300" />
+          <div className="absolute left-0 top-6 bottom-6 w-1 bg-blue-500 rounded-r-lg group-active:scale-y-110 transition duration-300" />
 
           <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition duration-300">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center group-active:bg-blue-500 group-active:text-white transition duration-300">
               <GraduationCap className="w-6 h-6" />
             </div>
             <div>
@@ -265,17 +263,17 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
-          <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition" />
+          <ArrowRight className="w-5 h-5 text-slate-300 group-active:text-blue-500 group-active:translate-x-1 transition" />
         </div>
 
         {/* C. Gerak Daily Module */}
         <div
-          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] transition duration-200"
+          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm active:scale-[0.99] active:shadow-md transition duration-200"
         >
-          <div className="absolute left-0 top-6 bottom-6 w-1 bg-violet-500 rounded-r-lg group-hover:scale-y-110 transition duration-300" />
+          <div className="absolute left-0 top-6 bottom-6 w-1 bg-violet-500 rounded-r-lg group-active:scale-y-110 transition duration-300" />
 
           <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-500 flex items-center justify-center group-hover:bg-violet-500 group-hover:text-white transition duration-300">
+            <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-500 flex items-center justify-center group-active:bg-violet-500 group-active:text-white transition duration-300">
               <ShoppingBasket className="w-6 h-6" />
             </div>
             <div>
@@ -285,18 +283,18 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
-          <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-violet-500 group-hover:translate-x-1 transition" />
+          <ArrowRight className="w-5 h-5 text-slate-300 group-active:text-violet-500 group-active:translate-x-1 transition" />
         </div>
 
         {/* D. Gerak Rental Module */}
         <div
           onClick={() => setCurrentPage('gerak-rental')}
-          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] transition duration-200"
+          className="group relative bg-white border border-slate-100 rounded-3xl p-5 flex items-center justify-between cursor-pointer shadow-sm active:scale-[0.99] active:shadow-md transition duration-200"
         >
-          <div className="absolute left-0 top-6 bottom-6 w-1 bg-amber-500 rounded-r-lg group-hover:scale-y-110 transition duration-300" />
+          <div className="absolute left-0 top-6 bottom-6 w-1 bg-amber-500 rounded-r-lg group-active:scale-y-110 transition duration-300" />
 
           <div className="flex items-center gap-4 pl-1">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition duration-300">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center group-active:bg-amber-500 group-active:text-white transition duration-300">
               <KeyRound className="w-6 h-6" />
             </div>
             <div>
@@ -306,7 +304,7 @@ export const Dashboard: React.FC = () => {
               </p>
             </div>
           </div>
-          <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-amber-500 group-hover:translate-x-1 transition" />
+          <ArrowRight className="w-5 h-5 text-slate-300 group-active:text-amber-500 group-active:translate-x-1 transition" />
         </div>
 
       </div>

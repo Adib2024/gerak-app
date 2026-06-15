@@ -64,7 +64,7 @@ const InstallPrompt: React.FC = () => {
   return (
     <div
       className="fixed inset-0 z-[9998] flex items-end justify-center"
-      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
       onClick={dismiss}
     >
       <div

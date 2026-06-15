@@ -95,7 +95,7 @@ export const Register: React.FC = () => {
               <select
                 value={university}
                 onChange={e => { setUniversity(e.target.value); setCampus(''); }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition appearance-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition appearance-none"
                 required
               >
                 <option value="" disabled>Select your university…</option>
@@ -123,7 +123,7 @@ export const Register: React.FC = () => {
                   <select
                     value={campus}
                     onChange={e => setCampus(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition appearance-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition appearance-none"
                     required
                   >
                     <option value="" disabled>Select your campus…</option>
@@ -161,7 +161,7 @@ export const Register: React.FC = () => {
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="Full name"
                 required
               />
@@ -177,7 +177,7 @@ export const Register: React.FC = () => {
                 type="tel"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="e.g. 0123456789"
                 required
               />
@@ -193,7 +193,7 @@ export const Register: React.FC = () => {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="smartcampus@gmail.com"
                 required
               />
@@ -243,7 +243,7 @@ export const Register: React.FC = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-9 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-9 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="At least 6 characters"
                 required
               />
@@ -263,7 +263,7 @@ export const Register: React.FC = () => {
                 type={showConfirm ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-9 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-9 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="Re-enter password"
                 required
               />

@@ -1244,7 +1244,7 @@ export const AdminHome: React.FC = () => {
 
         {showFilterDropdown && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-2xl shadow-xl z-30 overflow-hidden">
-            <div className="max-h-48 overflow-y-auto">
+            <div className="max-h-48 overflow-y-auto no-scrollbar">
               {(['all', 'pending', 'accepted', 'in_progress', 'completed', 'cancelled'] as FilterStatus[]).map((f, i, arr) => (
                 <button
                   key={f}

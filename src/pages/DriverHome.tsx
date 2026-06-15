@@ -1049,7 +1049,7 @@ export const DriverHome: React.FC = () => {
               </div>
             </div>
 
-            <div className="px-4 py-4 flex flex-col gap-3 overflow-y-auto max-h-[65vh]">
+            <div className="px-4 py-4 flex flex-col gap-3 overflow-y-auto no-scrollbar max-h-[65vh]">
 
               {/* Date / Time / Duration */}
               <div className="grid grid-cols-3 gap-2">

@@ -166,14 +166,61 @@ body {
 }
 
 /* ─── iOS input zoom prevention ───────────────────────────────────── */
-/* iOS zooms into any input with font-size < 16 px. Force 16 px on mobile,
-   visually offset with a slight scale so the layout stays compact.       */
 @media screen and (max-width: 480px) {
   input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea {
     font-size: 16px !important;
+    -webkit-user-select: text;
+    user-select: text;
   }
+}
+
+/* ─── iOS autofill override — prevent yellow/blue background flash ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #f8fafc inset !important;
+  -webkit-text-fill-color: #334155 !important;
+  caret-color: #ef4444;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ─── Remove default button appearance on iOS ─────────────────────── */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ─── Prevent hover states from sticking after tap on touch devices ── */
+/* On real mouse/trackpad devices, hover effects work normally.
+   On touch-only screens (iPhone/Android), we clear hover so buttons
+   don't stay highlighted after the finger lifts.                       */
+@media (hover: none) and (pointer: coarse) {
+  button:hover,
+  a:hover,
+  [role="button"]:hover {
+    background-color: inherit !important;
+    color: inherit !important;
+    border-color: inherit !important;
+    box-shadow: inherit !important;
+    opacity: inherit !important;
+  }
+}
+
+/* ─── GPU-accelerate scale/translate animations on mobile ──────────── */
+.active\:scale-95:active,
+.active\:scale-\[0\.99\]:active,
+.active\:scale-90:active,
+.group-active\:translate-x-1 {
+  will-change: transform;
+}
+
+/* ─── Momentum scrolling for iOS on all overflow containers ─────────── */
+[class*="overflow-y-auto"],
+[class*="overflow-x-auto"] {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ─── Page transition helper ──────────────────────────────────────── */

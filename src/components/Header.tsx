@@ -15,14 +15,14 @@ export const Header: React.FC = () => {
     <>
       <header
         className="sticky top-0 z-40 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between shadow-sm"
-        style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+        style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}
       >
         {/* Left: Back button (when available) + Branding */}
         <div className="flex items-center gap-1">
           {canGoBack && (
             <button
               onClick={goBack}
-              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 active:scale-90 transition text-slate-600 mr-0.5"
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 active:scale-90 transition text-slate-600 mr-0.5"
               aria-label="Go back"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -47,8 +47,8 @@ export const Header: React.FC = () => {
         </div>
         </div>
 
-        {/* Center: role switcher — admin/superadmin with canDrive only */}
-        {!isPreviewMode && (user.role === 'admin' || user.role === 'superadmin') && user.canDrive && (
+        {/* Center: role switcher — superadmin always, admin only if canDrive */}
+        {!isPreviewMode && (user.role === 'superadmin' || (user.role === 'admin' && user.canDrive)) && (
           <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
             <button
               onClick={switchToAdminMode}
@@ -75,7 +75,7 @@ export const Header: React.FC = () => {
           {/* Notification Bell */}
           <button 
             onClick={() => setCurrentPage('notifications')}
-            className="relative p-2 text-slate-600 hover:text-primary rounded-full hover:bg-slate-50 transition active:scale-90"
+            className="relative p-2.5 text-slate-600 hover:text-primary rounded-full hover:bg-slate-50 transition active:scale-90"
             aria-label="Inbox"
           >
             <Bell className="w-5 h-5" />

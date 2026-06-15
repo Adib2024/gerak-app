@@ -479,7 +479,7 @@ export const Transport: React.FC = () => {
 
             {showFromDropdown && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-100 rounded-2xl shadow-xl z-30 overflow-hidden">
-                <div className="max-h-48 overflow-y-auto">
+                <div className="max-h-48 overflow-y-auto no-scrollbar">
                   {fromOptions.map((from, i) => (
                     <button
                       key={from}
@@ -516,7 +516,7 @@ export const Transport: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowRouteList(true)}
-              className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-primary/30 bg-primary/5 ring-1 ring-primary/20 text-left transition active:scale-[0.98]"
+              className="w-full flex items-center justify-between p-3 rounded-2xl border border-primary/30 bg-primary/5 ring-1 ring-primary/20 text-left transition active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
                 <span className="text-xl">{selectedRoute.emoji}</span>
@@ -536,7 +536,7 @@ export const Transport: React.FC = () => {
             </button>
           ) : (
             /* Expanded: full scrollable list */
-            <div className="flex flex-col gap-2 max-h-[272px] overflow-y-auto pr-0.5">
+            <div className="flex flex-col gap-2 max-h-[272px] overflow-y-auto no-scrollbar pr-0.5">
               {filteredRoutes.map((route, i) => {
                 const isSelected = selectedRoute === route;
                 return (
@@ -547,7 +547,7 @@ export const Transport: React.FC = () => {
                       setSelectedRoute(isSelected ? null : route);
                       if (!isSelected) setShowRouteList(false);
                     }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all text-left ${
+                    className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left ${
                       isSelected
                         ? 'bg-primary/5 border-primary/30 ring-1 ring-primary/20'
                         : 'bg-white border-slate-100 hover:border-slate-200'
@@ -590,58 +590,79 @@ export const Transport: React.FC = () => {
       )}
 
       {/* ── Order form ── */}
-      <form onSubmit={handleBook} className="px-4 mt-3 flex flex-col gap-3">
-        <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-4">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-            <CalendarDays className="w-4 h-4" /> Order Details
+      <form onSubmit={handleBook} className="px-4 mt-2 flex flex-col gap-2">
+        <div className="bg-white border border-slate-100 rounded-2xl p-3 shadow-sm flex flex-col gap-2.5">
+          <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+            <CalendarDays className="w-3 h-3" /> Order Details
           </h3>
 
-          {/* Date + Time row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
+          {/* Date + Time row — invisible overlay trick:
+              A styled div shows the value; the real input sits on top
+              with opacity-0 so iOS still opens its native picker on tap,
+              but we control every pixel of the visible UI.             */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-0.5">
               <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1">Date</label>
-              <input
-                type="date"
-                required
-                value={date}
-                min={new Date().toISOString().split('T')[0]}
-                onChange={e => setDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary"
-              />
+              <div className="relative h-9">
+                <div className="absolute inset-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 flex items-center justify-between pointer-events-none">
+                  <span className={`text-xs font-bold ${date ? 'text-slate-700' : 'text-slate-400'}`}>
+                    {date ? new Date(date + 'T00:00:00').toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Select date'}
+                  </span>
+                  <CalendarDays className="w-3 h-3 text-slate-400 shrink-0" />
+                </div>
+                <input
+                  type="date"
+                  required
+                  value={date}
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={e => setDate(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  style={{ fontSize: '16px' }}
+                />
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-0.5">
               <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Time
                 {isNight && <span className="text-amber-500 font-extrabold ml-1">+RM5</span>}
               </label>
-              <input
-                type="time"
-                required
-                value={time}
-                onChange={e => setTime(e.target.value)}
-                className={`w-full bg-slate-50 border rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 focus:outline-none transition ${
-                  isNight ? 'border-amber-300 bg-amber-50 focus:border-amber-400' : 'border-slate-200 focus:border-primary'
-                }`}
-              />
+              <div className="relative h-9">
+                <div className={`absolute inset-0 border rounded-lg px-2.5 flex items-center justify-between pointer-events-none ${
+                  isNight ? 'border-amber-300 bg-amber-50' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className={`text-xs font-bold ${!time ? 'text-slate-400' : isNight ? 'text-amber-700' : 'text-slate-700'}`}>
+                    {time || 'Select time'}
+                  </span>
+                  <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                </div>
+                <input
+                  type="time"
+                  required
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  style={{ fontSize: '16px' }}
+                />
+              </div>
             </div>
           </div>
 
           {/* Passengers stepper */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
             <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1 flex items-center gap-1">
-              <Users className="w-3 h-3" /> Number of Passengers
+              <Users className="w-3 h-3" /> Passengers
             </label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setPassengers(p => Math.max(1, p - 1))}
-                className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-extrabold text-base hover:bg-slate-100 transition flex items-center justify-center"
+                className="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-extrabold text-base active:bg-slate-100 active:scale-95 transition flex items-center justify-center shrink-0"
               >−</button>
-              <span className="flex-1 text-center font-black text-lg text-slate-800">{passengers}</span>
+              <span className="flex-1 text-center font-black text-sm text-slate-800">{passengers}</span>
               <button
                 type="button"
                 onClick={() => setPassengers(p => Math.min(8, p + 1))}
-                className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-extrabold text-base hover:bg-slate-100 transition flex items-center justify-center"
+                className="w-10 h-10 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-extrabold text-base active:bg-slate-100 active:scale-95 transition flex items-center justify-center shrink-0"
               >+</button>
             </div>
             {passengers > 4 && (
@@ -651,42 +672,44 @@ export const Transport: React.FC = () => {
             )}
           </div>
 
-          {/* Contact */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1 flex items-center gap-1">
-              <Phone className="w-3 h-3" /> Contact Number
-            </label>
-            <input
-              type="tel"
-              required
-              value={contact}
-              onChange={e => setContact(e.target.value)}
-              placeholder="e.g. 0123456789"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary"
-            />
-          </div>
-
-          {/* Remark for Driver */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1">
-              Remark for Driver (optional)
-            </label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={2}
-              placeholder="e.g. luggage, wheelchair, I'll be at the main gate..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary resize-none"
-            />
+          {/* Contact + Remark in a 2-col row */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1 flex items-center gap-1">
+                <Phone className="w-3 h-3" /> Contact
+              </label>
+              <input
+                type="tel"
+                required
+                value={contact}
+                onChange={e => setContact(e.target.value)}
+                placeholder="0123456789"
+                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary"
+                style={{ fontSize: '16px' }}
+              />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider pl-1">
+                Remark (optional)
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Luggage, gate..."
+                className="w-full h-9 bg-slate-50 border border-slate-200 rounded-lg px-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary"
+                style={{ fontSize: '16px' }}
+              />
+            </div>
           </div>
         </div>
 
         {/* Fare summary */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+        <div className="bg-white border border-slate-100 rounded-xl px-3.5 py-2.5 flex items-center justify-between shadow-sm">
           <div>
             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Estimated Fare</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-2xl font-black text-slate-800">
+              <span className="text-base font-black text-slate-800">
                 {totalFare === 'TBC' ? 'TBC' : `RM${totalFare.toFixed(2)}`}
               </span>
               {isNight && baseFare !== 'TBC' && (
@@ -705,7 +728,7 @@ export const Transport: React.FC = () => {
         <button
           type="submit"
           disabled={!canBook || booking}
-          className={`mx-auto flex items-center gap-2 text-white text-sm font-extrabold px-8 py-2.5 rounded-full transition-all duration-300 active:scale-95 ${
+          className={`mx-auto flex items-center gap-2 text-white text-sm font-extrabold px-8 py-2 rounded-full transition-all duration-300 active:scale-95 ${
             canBook && !booking
               ? 'bg-primary hover:bg-primary-hover shadow-lg shadow-primary/50 ring-2 ring-primary/40 animate-pulse-glow cursor-pointer'
               : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
