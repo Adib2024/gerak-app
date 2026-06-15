@@ -324,7 +324,7 @@ export const DriverHome: React.FC = () => {
     order.fare === 'TBC' ? 'TBC' : `RM ${(Number(order.fare) + order.night_charge).toFixed(2)}`;
 
   // ── Suspended guard ──────────────────────────────────────────────────────────
-  if (user.status === 'inactive') {
+  if (user.status === 'inactive' && user.role !== 'superadmin') {
     return (
       <div className="flex-grow bg-slate-50 flex flex-col items-center justify-center px-8 gap-4 animate-fade-in">
         <div className="w-16 h-16 rounded-full bg-red-50 border-2 border-red-100 flex items-center justify-center">
