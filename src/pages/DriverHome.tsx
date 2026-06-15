@@ -633,13 +633,11 @@ export const DriverHome: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-black text-slate-800 leading-tight">{myJob.customer_name}</p>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-black text-slate-800">{fmt(myJob)}</p>
-                      {myJob.night_charge > 0 && (
-                        <p className="text-[9px] text-amber-500 font-bold">Night +RM{myJob.night_charge}</p>
-                      )}
-                    </div>
+                    <p className="text-sm font-black text-slate-800 shrink-0">{fmt(myJob)}</p>
                   </div>
+                  {myJob.night_charge > 0 && (
+                    <p className="text-[9px] text-amber-500 font-bold text-right">Night +RM{myJob.night_charge}</p>
+                  )}
                   <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                     <Users className="w-3 h-3" /> {myJob.passengers} passenger{myJob.passengers > 1 ? 's' : ''}
                   </p>
