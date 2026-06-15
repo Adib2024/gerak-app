@@ -260,10 +260,10 @@ export const AcademicCalendar: React.FC = () => {
   const todayStr = toDateStr(new Date());
 
   return (
-    <div className="flex flex-col h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-slate-50 overflow-y-auto no-scrollbar">
 
-      {/* ── STICKY CALENDAR ── */}
-      <div className="shrink-0 bg-white border-b border-slate-100 shadow-sm">
+      {/* ── CALENDAR ── */}
+      <div className="bg-white border-b border-slate-100 shadow-sm">
 
         {/* Year label */}
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
@@ -331,8 +331,8 @@ export const AcademicCalendar: React.FC = () => {
         </div>
       </div>
 
-      {/* ── SCROLLABLE EVENT LIST ── */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
+      {/* ── EVENT LIST ── */}
+      <div>
 
         {/* Semester tabs */}
         <div className="flex gap-2 px-4 pt-3 pb-2 overflow-x-auto no-scrollbar">
