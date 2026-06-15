@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { PDFDocument } from 'pdf-lib';
 import { useApp } from '../context/AppContext';
-import { RotateCcw, Calendar, CheckCircle2, X, Upload, FileText, ShieldAlert, Download } from 'lucide-react';
+import { RotateCcw, Calendar, CheckCircle2, X, Upload, FileText, ShieldAlert, Download, ChevronDown } from 'lucide-react';
 import { submitJubahToSheets } from '../lib/sheetsService';
 import { JubahLanding } from '../components/JubahLanding';
 
@@ -198,14 +198,21 @@ export const Jubah: React.FC = () => {
                 Full Name <span className="text-danger">*</span>
               </label>
               <p className="text-[9px] text-slate-400 -mt-0.5">Use uppercase letters. Example: MUHAMMAD AMIRUDDIN BIN AHMAD</p>
-              <input
-                type="text"
-                value={fullName}
-                onChange={e => setFullName(e.target.value.toUpperCase())}
-                placeholder="FULL NAME AS PER IC"
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 placeholder:font-normal placeholder:text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <div className="relative group">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 flex items-center pointer-events-none group-focus-within:border-blue-500 transition">
+                  <span className={`text-xs ${fullName ? 'font-bold text-slate-700' : 'font-normal text-slate-300'}`}>
+                    {fullName || 'FULL NAME AS PER IC'}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value.toUpperCase())}
+                  required
+                  className="absolute inset-0 w-full h-full rounded-xl bg-transparent focus:outline-none cursor-text"
+                  style={{ fontSize: '16px', color: 'transparent', caretColor: '#2563EB' }}
+                />
+              </div>
             </div>
 
             {/* IC Number */}
@@ -214,15 +221,22 @@ export const Jubah: React.FC = () => {
                 IC Number <span className="text-danger">*</span>
               </label>
               <p className="text-[9px] text-slate-400 -mt-0.5">Example: 980123456789 (Without ' - ')</p>
-              <input
-                type="text"
-                value={icNumber}
-                onChange={e => setIcNumber(e.target.value.replace(/\D/g, ''))}
-                placeholder="980123456789"
-                maxLength={12}
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 placeholder:font-normal placeholder:text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <div className="relative group">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 flex items-center pointer-events-none group-focus-within:border-blue-500 transition">
+                  <span className={`text-xs ${icNumber ? 'font-bold text-slate-700' : 'font-normal text-slate-300'}`}>
+                    {icNumber || '980123456789'}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={icNumber}
+                  onChange={e => setIcNumber(e.target.value.replace(/\D/g, ''))}
+                  maxLength={12}
+                  required
+                  className="absolute inset-0 w-full h-full rounded-xl bg-transparent focus:outline-none cursor-text"
+                  style={{ fontSize: '16px', color: 'transparent', caretColor: '#2563EB' }}
+                />
+              </div>
             </div>
 
             {/* HP Number */}
@@ -231,15 +245,22 @@ export const Jubah: React.FC = () => {
                 HP Number <span className="text-danger">*</span>
               </label>
               <p className="text-[9px] text-slate-400 -mt-0.5">Example: 012345678 (Without ' - ') · Our runner will be in touch shortly.</p>
-              <input
-                type="text"
-                value={hpNumber}
-                onChange={e => setHpNumber(e.target.value.replace(/\D/g, ''))}
-                placeholder="01XXXXXXXXX"
-                maxLength={11}
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 placeholder:font-normal placeholder:text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <div className="relative group">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 flex items-center pointer-events-none group-focus-within:border-blue-500 transition">
+                  <span className={`text-xs ${hpNumber ? 'font-bold text-slate-700' : 'font-normal text-slate-300'}`}>
+                    {hpNumber || '01XXXXXXXXX'}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={hpNumber}
+                  onChange={e => setHpNumber(e.target.value.replace(/\D/g, ''))}
+                  maxLength={11}
+                  required
+                  className="absolute inset-0 w-full h-full rounded-xl bg-transparent focus:outline-none cursor-text"
+                  style={{ fontSize: '16px', color: 'transparent', caretColor: '#2563EB' }}
+                />
+              </div>
             </div>
 
             {/* Matric ID */}
@@ -248,14 +269,21 @@ export const Jubah: React.FC = () => {
                 Matric ID <span className="text-danger">*</span>
               </label>
               <p className="text-[9px] text-slate-400 -mt-0.5">Use uppercase letters. Example: HB19021</p>
-              <input
-                type="text"
-                value={matricId}
-                onChange={e => setMatricId(e.target.value.toUpperCase())}
-                placeholder="HB19021"
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 placeholder:font-normal placeholder:text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <div className="relative group">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 flex items-center pointer-events-none group-focus-within:border-blue-500 transition">
+                  <span className={`text-xs ${matricId ? 'font-bold text-slate-700' : 'font-normal text-slate-300'}`}>
+                    {matricId || 'HB19021'}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={matricId}
+                  onChange={e => setMatricId(e.target.value.toUpperCase())}
+                  required
+                  className="absolute inset-0 w-full h-full rounded-xl bg-transparent focus:outline-none cursor-text"
+                  style={{ fontSize: '16px', color: 'transparent', caretColor: '#2563EB' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -268,17 +296,28 @@ export const Jubah: React.FC = () => {
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 Campus <span className="text-danger">*</span>
               </label>
-              <select
-                value={university}
-                onChange={e => { setUniversity(e.target.value); setFaculty(''); }}
-                required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500"
-              >
-                <option value="" disabled>Select your campus...</option>
-                {UNIVERSITIES.map(u => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
+              <div className="relative group">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 flex items-center justify-between pointer-events-none group-focus-within:border-blue-500 transition">
+                  <span className={`text-xs ${university ? 'font-bold text-slate-700' : 'font-normal text-slate-300'}`}>
+                    {university
+                      ? (university.includes('Pekan') ? 'UMPSA Pekan' : 'UMPSA Gambang')
+                      : 'Select your campus...'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                </div>
+                <select
+                  value={university}
+                  onChange={e => { setUniversity(e.target.value); setFaculty(''); }}
+                  required
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  style={{ fontSize: '16px' }}
+                >
+                  <option value="" disabled>Select your campus...</option>
+                  {UNIVERSITIES.map(u => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Faculty — list changes based on selected university */}
@@ -286,20 +325,29 @@ export const Jubah: React.FC = () => {
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 Faculty <span className="text-danger">*</span>
               </label>
-              <select
-                value={faculty}
-                onChange={e => setFaculty(e.target.value)}
-                required
-                disabled={!university}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <option value="" disabled>
-                  {university ? 'Select your faculty...' : 'Select a university first'}
-                </option>
-                {(UNIVERSITY_FACULTIES[university] ?? []).map(f => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
+              <div className={`relative group ${!university ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 flex items-center justify-between pointer-events-none group-focus-within:border-blue-500 transition">
+                  <span className={`text-xs ${faculty ? 'font-bold text-slate-700' : 'font-normal text-slate-300'}`}>
+                    {faculty || (university ? 'Select your faculty...' : 'Select a university first')}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                </div>
+                <select
+                  value={faculty}
+                  onChange={e => setFaculty(e.target.value)}
+                  required
+                  disabled={!university}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  style={{ fontSize: '16px' }}
+                >
+                  <option value="" disabled>
+                    {university ? 'Select your faculty...' : 'Select a university first'}
+                  </option>
+                  {(UNIVERSITY_FACULTIES[university] ?? []).map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Remark */}
@@ -313,7 +361,7 @@ export const Jubah: React.FC = () => {
                     key={r}
                     type="button"
                     onClick={() => setRemark(r)}
-                    className={`py-2 rounded-xl text-[11px] font-bold border transition ${
+                    className={`py-2 rounded-xl text-xs font-bold border transition ${
                       remark === r
                         ? 'border-blue-500 bg-blue-50 text-blue-600'
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -644,13 +692,33 @@ export const Jubah: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Return Date</label>
-                    <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} required
-                      className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold text-slate-700 focus:outline-none" />
+                    <div className="relative group">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 flex items-center justify-between pointer-events-none group-focus-within:border-blue-500 transition">
+                        <span className={`text-xs font-bold ${returnDate ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {returnDate
+                            ? new Date(returnDate + 'T00:00:00').toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : 'Select date'}
+                        </span>
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                      </div>
+                      <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} required
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        style={{ fontSize: '16px' }} />
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Time Slot</label>
-                    <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} required
-                      className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold text-slate-700 focus:outline-none" />
+                    <div className="relative group">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 flex items-center justify-between pointer-events-none group-focus-within:border-blue-500 transition">
+                        <span className={`text-xs font-bold ${returnTime ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {returnTime || 'Select time'}
+                        </span>
+                        <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                      </div>
+                      <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} required
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        style={{ fontSize: '16px' }} />
+                    </div>
                   </div>
                 </div>
                 <button type="submit"
