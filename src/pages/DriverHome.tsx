@@ -74,6 +74,74 @@ const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
   cancelled:   { label: 'Cancelled',   cls: 'bg-slate-100 text-slate-400 border-slate-200' },
 };
 
+const ITEM_H = 44;
+const DRUM_H = 220;
+
+const MonthDrumPicker: React.FC<{ value: string; onChange: (m: string) => void }> = ({ value, onChange }) => {
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  const ref = useRef<HTMLDivElement>(null);
+  const padding = (DRUM_H - ITEM_H) / 2;
+
+  useEffect(() => {
+    const idx = months.indexOf(value);
+    if (ref.current && idx >= 0) {
+      ref.current.scrollTop = idx * ITEM_H;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleScroll = () => {
+    if (!ref.current) return;
+    const idx = Math.round(ref.current.scrollTop / ITEM_H);
+    const clamped = Math.max(0, Math.min(idx, months.length - 1));
+    if (months[clamped] !== value) onChange(months[clamped]);
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-100 shadow-sm" style={{ height: DRUM_H }}>
+      <div
+        ref={ref}
+        onScroll={handleScroll}
+        className="h-full overflow-y-scroll no-scrollbar"
+        style={{ scrollSnapType: 'y mandatory' }}
+      >
+        <div style={{ height: padding }} />
+        {months.map(m => {
+          const [y, mo] = m.split('-');
+          const lbl = new Date(Number(y), Number(mo) - 1, 1)
+            .toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+          return (
+            <div key={m} style={{ height: ITEM_H, scrollSnapAlign: 'center' }}
+              className={`flex items-center justify-center transition-all ${
+                value === m
+                  ? 'text-emerald-600 text-base font-extrabold'
+                  : 'text-slate-400 text-sm font-semibold'
+              }`}>
+              {lbl}
+            </div>
+          );
+        })}
+        <div style={{ height: padding }} />
+      </div>
+
+      {/* Top & bottom fade */}
+      <div className="absolute inset-x-0 top-0 pointer-events-none"
+        style={{ height: padding, background: 'linear-gradient(to bottom, white 40%, transparent)' }} />
+      <div className="absolute inset-x-0 bottom-0 pointer-events-none"
+        style={{ height: padding, background: 'linear-gradient(to top, white 40%, transparent)' }} />
+
+      {/* Selection lines */}
+      <div className="absolute inset-x-6 pointer-events-none border-t-2 border-b-2 border-emerald-200 rounded"
+        style={{ top: padding, height: ITEM_H }} />
+    </div>
+  );
+};
+
 export const DriverHome: React.FC = () => {
   const { user } = useApp();
 
@@ -877,13 +945,6 @@ export const DriverHome: React.FC = () => {
           .reduce((sum, o) => sum + Number(o.fare) + (o.night_charge ?? 0), 0);
         const tbcCount = filtered.filter(o => o.fare === 'TBC').length;
 
-        // Last 12 months newest-first
-        const months = Array.from({ length: 12 }, (_, i) => {
-          const d = new Date();
-          d.setMonth(d.getMonth() - i);
-          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        });
-
         const [selY, selM] = earningsMonth.split('-');
         const monthLabel = new Date(Number(selY), Number(selM) - 1, 1)
           .toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
@@ -904,25 +965,9 @@ export const DriverHome: React.FC = () => {
               ))}
             </div>
 
-            {/* Month wheel — only when wheel view is active */}
+            {/* Drum picker — only when wheel view is active */}
             {earningsView === 'wheel' && (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                {months.map(m => {
-                  const [y, mo] = m.split('-');
-                  const lbl = new Date(Number(y), Number(mo) - 1, 1)
-                    .toLocaleDateString('en-MY', { month: 'short', year: '2-digit' });
-                  return (
-                    <button key={m} onClick={() => setEarningsMonth(m)}
-                      className={`shrink-0 px-3 py-1.5 rounded-2xl text-[10px] font-extrabold transition active:scale-95 ${
-                        earningsMonth === m
-                          ? 'bg-emerald-500 text-white shadow-sm'
-                          : 'bg-white border border-slate-200 text-slate-500'
-                      }`}>
-                      {lbl}
-                    </button>
-                  );
-                })}
-              </div>
+              <MonthDrumPicker value={earningsMonth} onChange={setEarningsMonth} />
             )}
 
             {/* Summary card */}
