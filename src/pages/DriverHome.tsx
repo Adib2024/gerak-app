@@ -103,7 +103,11 @@ export const DriverHome: React.FC = () => {
   const [vehicleSaving,        setVehicleSaving]        = useState(false);
   const [pendingRentals,       setPendingRentals]       = useState(0);
   const [rentalReceiptBk,      setRentalReceiptBk]      = useState<RentalBookingOwner | null>(null);
-  const [earningsFilter, setEarningsFilter]             = useState<'month' | 'all'>('month');
+  const [earningsMonth, setEarningsMonth]               = useState(() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [earningsView, setEarningsView]                 = useState<'wheel' | 'all'>('wheel');
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -862,51 +866,85 @@ export const DriverHome: React.FC = () => {
       ══════════════════════════════════════════ */}
       {!loading && activeTab === 'earnings' && user.canDrive && (() => {
         const completed = myHistory.filter(o => o.status === 'completed');
-        const now = new Date();
-        const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const filtered = earningsFilter === 'month'
-          ? completed.filter(o => o.date.startsWith(monthPrefix))
+
+        // Wheel picker: filter by selected month. All Time: all completed.
+        const filtered = earningsView === 'wheel'
+          ? completed.filter(o => o.date.startsWith(earningsMonth))
           : completed;
+
         const totalEarned = filtered
           .filter(o => o.fare !== 'TBC')
           .reduce((sum, o) => sum + Number(o.fare) + (o.night_charge ?? 0), 0);
         const tbcCount = filtered.filter(o => o.fare === 'TBC').length;
 
+        // Last 12 months newest-first
+        const months = Array.from({ length: 12 }, (_, i) => {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        });
+
+        const [selY, selM] = earningsMonth.split('-');
+        const monthLabel = new Date(Number(selY), Number(selM) - 1, 1)
+          .toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+        const cardLabel = earningsView === 'wheel' ? monthLabel : 'All Time';
+
         return (
           <div className="flex flex-col gap-3 px-4">
 
-            {/* Filter toggle */}
+            {/* View toggle */}
             <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
-              {(['month', 'all'] as const).map(f => (
-                <button key={f} onClick={() => setEarningsFilter(f)}
+              {(['wheel', 'all'] as const).map(v => (
+                <button key={v} onClick={() => setEarningsView(v)}
                   className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
-                    earningsFilter === f ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400'
+                    earningsView === v ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400'
                   }`}>
-                  {f === 'month' ? 'This Month' : 'All Time'}
+                  {v === 'wheel' ? 'Wheel Picker' : 'All Time'}
                 </button>
               ))}
             </div>
+
+            {/* Month wheel — only when wheel view is active */}
+            {earningsView === 'wheel' && (
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {months.map(m => {
+                  const [y, mo] = m.split('-');
+                  const lbl = new Date(Number(y), Number(mo) - 1, 1)
+                    .toLocaleDateString('en-MY', { month: 'short', year: '2-digit' });
+                  return (
+                    <button key={m} onClick={() => setEarningsMonth(m)}
+                      className={`shrink-0 px-3 py-1.5 rounded-2xl text-[10px] font-extrabold transition active:scale-95 ${
+                        earningsMonth === m
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : 'bg-white border border-slate-200 text-slate-500'
+                      }`}>
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Summary card */}
             <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                {earningsFilter === 'month' ? `${now.toLocaleString('en-MY', { month: 'long' })} ${now.getFullYear()}` : 'All Time'} Earnings
+                {cardLabel} Earnings
               </p>
 
-              <div className="flex items-end gap-3 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
                 <div>
                   <p className="text-[9px] text-slate-400 font-semibold mb-0.5">Cash Fare</p>
-                  <p className="text-3xl font-black text-slate-800 leading-none">
+                  <p className="text-xs font-black text-slate-800">
                     RM <span className="text-emerald-500">{totalEarned.toFixed(2)}</span>
                   </p>
                 </div>
                 {tbcCount > 0 && (
                   <>
-                    <p className="text-xl font-black text-slate-300 mb-0.5">+</p>
+                    <p className="text-xs font-black text-slate-300">+</p>
                     <div>
                       <p className="text-[9px] text-slate-400 font-semibold mb-0.5">TBC Rides</p>
-                      <p className="text-3xl font-black text-slate-800 leading-none">
+                      <p className="text-xs font-black text-slate-800">
                         TBC <span className="text-amber-500">({tbcCount})</span>
                       </p>
                     </div>
@@ -937,9 +975,9 @@ export const DriverHome: React.FC = () => {
                 <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-slate-300" />
                 </div>
-                <p className="text-sm font-black text-slate-500">No completed rides yet</p>
+                <p className="text-sm font-black text-slate-500">No completed rides</p>
                 <p className="text-xs text-slate-400 font-semibold">
-                  {earningsFilter === 'month' ? 'No rides completed this month.' : 'Complete your first ride to see earnings.'}
+                  {earningsView === 'wheel' ? `No rides completed in ${monthLabel}.` : 'No completed rides yet.'}
                 </p>
               </div>
             )}
