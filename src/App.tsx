@@ -1,22 +1,24 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
+// Critical path — loaded immediately
 import { SplashScreen } from './pages/SplashScreen';
 import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { Dashboard } from './pages/Dashboard';
-import { Transport } from './pages/Transport';
-import { Jubah } from './pages/Jubah';
-import { Profile } from './pages/Profile';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { DriverHome } from './pages/DriverHome';
-import { AdminHome } from './pages/AdminHome';
-import { MyOrders } from './pages/MyOrders';
-import { GerakRental } from './pages/GerakRental';
-import { AcademicCalendar } from './pages/AcademicCalendar';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { ResetPassword } from './pages/ResetPassword';
+// Everything else — split into separate chunks, loaded on demand
+const Register         = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
+const Dashboard        = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Transport        = lazy(() => import('./pages/Transport').then(m => ({ default: m.Transport })));
+const Jubah            = lazy(() => import('./pages/Jubah').then(m => ({ default: m.Jubah })));
+const Profile          = lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
+const DriverHome       = lazy(() => import('./pages/DriverHome').then(m => ({ default: m.DriverHome })));
+const AdminHome        = lazy(() => import('./pages/AdminHome').then(m => ({ default: m.AdminHome })));
+const MyOrders         = lazy(() => import('./pages/MyOrders').then(m => ({ default: m.MyOrders })));
+const GerakRental      = lazy(() => import('./pages/GerakRental').then(m => ({ default: m.GerakRental })));
+const AcademicCalendar = lazy(() => import('./pages/AcademicCalendar').then(m => ({ default: m.AcademicCalendar })));
+const ForgotPassword   = lazy(() => import('./pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword    = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
@@ -315,7 +317,9 @@ const AppContent: React.FC = () => {
       )}
       <Header />
       <div key={currentPage} className="flex-1 flex flex-col overflow-hidden page-transition">
-        {renderPage()}
+        <Suspense fallback={<div className="flex-1 flex items-center justify-center"><span className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>}>
+          {renderPage()}
+        </Suspense>
       </div>
       <BottomNav />
     </div>

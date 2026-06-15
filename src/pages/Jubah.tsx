@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { PDFDocument } from 'pdf-lib';
 import { useApp } from '../context/AppContext';
 import { RotateCcw, Calendar, CheckCircle2, X, Upload, FileText, ShieldAlert, Download, ChevronDown } from 'lucide-react';
 import { submitJubahToSheets } from '../lib/sheetsService';
@@ -76,6 +75,7 @@ export const Jubah: React.FC = () => {
     if (!oscarFile || !skpgFile || !konvoSlipFile || !icFile) return;
     setCombining(true);
     try {
+      const { PDFDocument } = await import('pdf-lib');
       const merged = await PDFDocument.create();
       const pdfFiles = [oscarFile, skpgFile, konvoSlipFile];
       for (const f of pdfFiles) {
