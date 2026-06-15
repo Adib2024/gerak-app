@@ -697,10 +697,10 @@ export const DriverHome: React.FC = () => {
                     href={`https://wa.me/${myJob.contact.replace(/\D/g,'').replace(/^0/,'60')}?text=${encodeURIComponent(`Hi, I'm your Gerak driver. I've accepted your ride on ${myJob.date} at ${myJob.time}. On my way! 🚗`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 bg-[#25D366] text-white font-extrabold text-xs px-3 py-3 rounded-2xl active:scale-95 transition shadow-md shrink-0"
+                    className="text-[#25D366] active:scale-90 transition shrink-0"
+                    aria-label="WhatsApp customer"
                   >
-                    <WaIcon className="w-4 h-4" />
-                    WA
+                    <WaIcon className="w-9 h-9" />
                   </a>
 
                   {/* Cancel — only before trip starts */}
