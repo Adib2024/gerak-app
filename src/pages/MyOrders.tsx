@@ -102,12 +102,7 @@ const DriverSheet: React.FC<DriverSheetProps> = ({ order, onClose }) => (
       <div className="mx-4 mb-4 bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
         <InfoRow icon={<User className="w-4 h-4 text-slate-400" />}   label="Nama"         value={order.driver_name ?? '—'} />
         <InfoRow icon={<IdCard className="w-4 h-4 text-slate-400" />} label="Driver ID"     value={order.driver_gerak_id ?? '—'} highlight />
-        <InfoRow
-          icon={<Phone className="w-4 h-4 text-slate-400" />}
-          label="Phone"
-          value={order.driver_contact ?? '—'}
-          suffix={order.driver_contact ? <WaBtn phone={order.driver_contact} /> : undefined}
-        />
+        <InfoRow icon={<Phone className="w-4 h-4 text-slate-400" />} label="Phone" value={order.driver_contact ?? '—'} />
         <InfoRow icon={<Car className="w-4 h-4 text-slate-400" />}    label="Car Type"      value={order.driver_vehicle || '—'} />
         <InfoRow icon={<Hash className="w-4 h-4 text-slate-400" />}   label="Plate Number"  value={order.driver_plate || '—'} mono />
       </div>
