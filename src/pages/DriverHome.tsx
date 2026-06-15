@@ -175,7 +175,6 @@ export const DriverHome: React.FC = () => {
     const n = new Date();
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
   });
-  const [earningsView, setEarningsView]                 = useState<'wheel' | 'all'>('wheel');
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -935,97 +934,74 @@ export const DriverHome: React.FC = () => {
       {!loading && activeTab === 'earnings' && user.canDrive && (() => {
         const completed = myHistory.filter(o => o.status === 'completed');
 
-        // Wheel picker: filter by selected month. All Time: all completed.
-        const filtered = earningsView === 'wheel'
-          ? completed.filter(o => o.date.startsWith(earningsMonth))
-          : completed;
-
-        const totalEarned = filtered
-          .filter(o => o.fare !== 'TBC')
-          .reduce((sum, o) => sum + Number(o.fare) + (o.night_charge ?? 0), 0);
-        const tbcCount = filtered.filter(o => o.fare === 'TBC').length;
-
+        // Month card — filtered by drum picker selection
         const [selY, selM] = earningsMonth.split('-');
         const monthLabel = new Date(Number(selY), Number(selM) - 1, 1)
           .toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
-        const cardLabel = earningsView === 'wheel' ? monthLabel : 'All Time';
+        const monthFiltered   = completed.filter(o => o.date.startsWith(earningsMonth));
+        const monthEarned     = monthFiltered.filter(o => o.fare !== 'TBC').reduce((s, o) => s + Number(o.fare) + (o.night_charge ?? 0), 0);
+        const monthTbc        = monthFiltered.filter(o => o.fare === 'TBC').length;
+
+        // All time card
+        const allEarned = completed.filter(o => o.fare !== 'TBC').reduce((s, o) => s + Number(o.fare) + (o.night_charge ?? 0), 0);
+        const allTbc    = completed.filter(o => o.fare === 'TBC').length;
+
+        const EarningsCard = ({ label, earned, tbc, rows }: {
+          label: string; earned: number; tbc: number; rows: typeof completed;
+        }) => (
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+              {label} Earnings
+            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div>
+                <p className="text-[9px] text-slate-400 font-semibold mb-0.5">Cash Fare</p>
+                <p className="text-xs font-black text-slate-800">
+                  RM <span className="text-emerald-500">{earned.toFixed(2)}</span>
+                </p>
+              </div>
+              {tbc > 0 && (
+                <>
+                  <p className="text-xs font-black text-slate-300">+</p>
+                  <div>
+                    <p className="text-[9px] text-slate-400 font-semibold mb-0.5">TBC Rides</p>
+                    <p className="text-xs font-black text-slate-800">
+                      TBC <span className="text-amber-500">({tbc})</span>
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex gap-3 pt-1">
+              <div className="flex-1 bg-slate-50 rounded-2xl px-3 py-2.5 text-center">
+                <p className="text-lg font-black text-slate-700">{rows.length}</p>
+                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Completed</p>
+              </div>
+              <div className="flex-1 bg-emerald-50 rounded-2xl px-3 py-2.5 text-center">
+                <p className="text-lg font-black text-emerald-600">{rows.filter(o => o.fare !== 'TBC').length}</p>
+                <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Cash Rides</p>
+              </div>
+              {tbc > 0 && (
+                <div className="flex-1 bg-amber-50 rounded-2xl px-3 py-2.5 text-center">
+                  <p className="text-lg font-black text-amber-600">{tbc}</p>
+                  <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">TBC Rides</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
 
         return (
           <div className="flex flex-col gap-3 px-4">
+            {/* Drum picker */}
+            <MonthDrumPicker value={earningsMonth} onChange={setEarningsMonth} />
 
-            {/* View toggle */}
-            <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
-              {(['wheel', 'all'] as const).map(v => (
-                <button key={v} onClick={() => setEarningsView(v)}
-                  className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
-                    earningsView === v ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400'
-                  }`}>
-                  {v === 'wheel' ? 'Wheel Picker' : 'All Time'}
-                </button>
-              ))}
-            </div>
+            {/* Month earnings */}
+            <EarningsCard label={monthLabel} earned={monthEarned} tbc={monthTbc} rows={monthFiltered} />
 
-            {/* Drum picker — only when wheel view is active */}
-            {earningsView === 'wheel' && (
-              <MonthDrumPicker value={earningsMonth} onChange={setEarningsMonth} />
-            )}
-
-            {/* Summary card */}
-            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
-                {cardLabel} Earnings
-              </p>
-
-              <div className="flex items-center gap-3 flex-wrap">
-                <div>
-                  <p className="text-[9px] text-slate-400 font-semibold mb-0.5">Cash Fare</p>
-                  <p className="text-xs font-black text-slate-800">
-                    RM <span className="text-emerald-500">{totalEarned.toFixed(2)}</span>
-                  </p>
-                </div>
-                {tbcCount > 0 && (
-                  <>
-                    <p className="text-xs font-black text-slate-300">+</p>
-                    <div>
-                      <p className="text-[9px] text-slate-400 font-semibold mb-0.5">TBC Rides</p>
-                      <p className="text-xs font-black text-slate-800">
-                        TBC <span className="text-amber-500">({tbcCount})</span>
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-1">
-                <div className="flex-1 bg-slate-50 rounded-2xl px-3 py-2.5 text-center">
-                  <p className="text-lg font-black text-slate-700">{filtered.length}</p>
-                  <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Completed</p>
-                </div>
-                <div className="flex-1 bg-emerald-50 rounded-2xl px-3 py-2.5 text-center">
-                  <p className="text-lg font-black text-emerald-600">{filtered.filter(o => o.fare !== 'TBC').length}</p>
-                  <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Cash Rides</p>
-                </div>
-                {tbcCount > 0 && (
-                  <div className="flex-1 bg-amber-50 rounded-2xl px-3 py-2.5 text-center">
-                    <p className="text-lg font-black text-amber-600">{tbcCount}</p>
-                    <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">TBC Rides</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {filtered.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-slate-300" />
-                </div>
-                <p className="text-sm font-black text-slate-500">No completed rides</p>
-                <p className="text-xs text-slate-400 font-semibold">
-                  {earningsView === 'wheel' ? `No rides completed in ${monthLabel}.` : 'No completed rides yet.'}
-                </p>
-              </div>
-            )}
+            {/* All time earnings */}
+            <EarningsCard label="All Time" earned={allEarned} tbc={allTbc} rows={completed} />
           </div>
         );
       })()}
