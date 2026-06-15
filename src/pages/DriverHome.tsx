@@ -520,7 +520,7 @@ export const DriverHome: React.FC = () => {
       <OrderReceiptSheet
         order={sheetOrder}
         onClose={() => setSheetOrder(null)}
-        showWhatsApp={sheetOrder.status === 'completed'}
+        showWhatsApp={sheetOrder.status === 'completed' || sheetOrder.status === 'cancelled'}
       />
     )}
     <div className="flex-grow bg-slate-50 overflow-y-auto no-scrollbar pb-6 flex flex-col animate-fade-in">
