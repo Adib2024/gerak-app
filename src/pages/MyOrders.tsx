@@ -6,6 +6,7 @@ import {
   User, Hash, ShieldCheck, XCircle, RotateCcw,
 } from 'lucide-react';
 import { WaBtn } from '../lib/whatsapp';
+import { OrderReceiptBlock } from '../components/OrderReceiptSheet';
 
 interface RideOrder {
   id: string;
@@ -45,8 +46,6 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled:   'Cancelled',
 };
 
-const totalFare = (o: RideOrder) =>
-  o.fare === 'TBC' ? 'TBC (map booking)' : `RM${(Number(o.fare) + (o.night_charge ?? 0)).toFixed(2)}`;
 
 const hasDriver = (o: RideOrder) =>
   ['accepted', 'in_progress', 'completed'].includes(o.status) && !!o.driver_name;
@@ -326,15 +325,7 @@ export const MyOrders: React.FC = () => {
 
               {/* Receipt */}
               <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs font-mono text-slate-700 space-y-1.5 leading-relaxed">
-                <p><span className="text-slate-400">Date:</span> <span className="text-blue-600 font-bold">{o.date}</span></p>
-                <p><span className="text-slate-400">Time:</span> <span className="text-blue-600 font-bold">{o.time}</span>{o.night_charge > 0 ? ' (Night +RM5)' : ''}</p>
-                <p><span className="text-slate-400">Campus:</span> UMPSA {o.campus}</p>
-                <p><span className="text-slate-400">Pick-up:</span> {o.pickup}</p>
-                <p><span className="text-slate-400">Destination:</span> {o.destination}</p>
-                <p><span className="text-slate-400">Passengers:</span> {o.passengers} pax</p>
-                <p><span className="text-slate-400">Contact:</span> {o.contact}</p>
-                <p><span className="text-slate-400">Est. Fare:</span> {totalFare(o)}</p>
-                {o.notes && <p><span className="text-slate-400">Remark:</span> {o.notes}</p>}
+                <OrderReceiptBlock order={o} />
 
                 {/* Driver row — tappable, single line */}
                 {hasDriver(o) && (

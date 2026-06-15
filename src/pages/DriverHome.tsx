@@ -9,6 +9,7 @@ import {
   Package, Ban, Unlock, Hash, X, TrendingUp,
 } from 'lucide-react';
 import { WaIcon, toWa } from '../lib/whatsapp';
+import { OrderReceiptSheet } from '../components/OrderReceiptSheet';
 
 interface RentalVehicle {
   owner_id: string;
@@ -77,72 +78,6 @@ const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
 const ITEM_H = 40;
 const DRUM_H = 120;
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  pending:     { label: 'PENDING',     cls: 'bg-amber-100 text-amber-600 border-amber-200' },
-  accepted:    { label: 'ACCEPTED',    cls: 'bg-blue-100 text-blue-600 border-blue-200' },
-  in_progress: { label: 'IN PROGRESS', cls: 'bg-indigo-100 text-indigo-600 border-indigo-200' },
-  completed:   { label: 'COMPLETED',   cls: 'bg-emerald-100 text-emerald-600 border-emerald-200' },
-  cancelled:   { label: 'CANCELLED',   cls: 'bg-slate-100 text-slate-400 border-slate-200' },
-};
-
-const OrderReceiptSheet: React.FC<{ order: RideOrder; onClose: () => void }> = ({ order, onClose }) => {
-  const badge  = STATUS_BADGE[order.status] ?? STATUS_BADGE.pending;
-  const isNight = order.night_charge > 0;
-  const [d, m, y] = (() => { const p = order.date.split('-'); return [p[2], p[1], p[0]]; })();
-  const displayDate = `${d}/${m}/${y}`;
-  const fareLabel = order.fare === 'TBC' ? 'TBC' : `RM${(Number(order.fare) + (order.night_charge ?? 0)).toFixed(2)}`;
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={onClose}>
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-
-      {/* Sheet */}
-      <div className="relative bg-white rounded-t-3xl px-5 pt-5 pb-8 flex flex-col gap-3 shadow-2xl"
-        onClick={e => e.stopPropagation()}>
-
-        {/* Drag handle */}
-        <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-1" />
-
-        {/* Status + date row */}
-        <div className="flex items-center justify-between">
-          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${badge.cls}`}>
-            {badge.label}
-          </span>
-          <span className="text-[10px] font-bold text-slate-400">{displayDate}</span>
-        </div>
-
-        {/* Receipt rows */}
-        <div className="bg-slate-50 rounded-2xl px-4 py-3 flex flex-col gap-2">
-          {[
-            { label: 'Date',       value: order.date },
-            { label: 'Time',       value: isNight ? `${order.time} (Night +RM${order.night_charge})` : order.time },
-            { label: 'Campus',     value: order.campus },
-            { label: 'Pick-up',    value: order.pickup },
-            { label: 'Destination',value: order.destination },
-            { label: 'Passengers', value: `${order.passengers} pax` },
-            { label: 'Contact',    value: order.contact },
-            { label: 'Est. Fare',  value: fareLabel },
-            { label: 'Remark',     value: order.notes || 'no' },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex gap-2 text-xs">
-              <span className="text-slate-400 font-semibold w-24 shrink-0">{label}:</span>
-              <span className={`font-bold ${label === 'Time' && isNight ? 'text-amber-500' : label === 'Est. Fare' ? 'text-emerald-600' : 'text-slate-700'}`}>
-                {value}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Close */}
-        <button onClick={onClose}
-          className="mt-1 w-full py-3 rounded-2xl bg-slate-100 text-slate-500 font-extrabold text-xs active:scale-95 transition">
-          Close
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const MonthDrumPicker: React.FC<{ value: string; onChange: (m: string) => void }> = ({ value, onChange }) => {
   const months = Array.from({ length: 12 }, (_, i) => {
