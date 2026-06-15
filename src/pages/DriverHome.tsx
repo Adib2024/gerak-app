@@ -74,8 +74,8 @@ const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
   cancelled:   { label: 'Cancelled',   cls: 'bg-slate-100 text-slate-400 border-slate-200' },
 };
 
-const ITEM_H = 44;
-const DRUM_H = 220;
+const ITEM_H = 40;
+const DRUM_H = 120;
 
 const MonthDrumPicker: React.FC<{ value: string; onChange: (m: string) => void }> = ({ value, onChange }) => {
   const months = Array.from({ length: 12 }, (_, i) => {
