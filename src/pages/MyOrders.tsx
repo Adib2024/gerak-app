@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import {
   ClipboardList, Car, Phone, X, IdCard,
-  User, Hash, ShieldCheck,
+  User, Hash, ShieldCheck, XCircle, RotateCcw,
 } from 'lucide-react';
 import { WaBtn } from '../lib/whatsapp';
 
@@ -155,13 +155,25 @@ const InfoRow: React.FC<{
   </div>
 );
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const secsLeft = (o: RideOrder) =>
+  Math.max(0, 300 - Math.floor((Date.now() - new Date(o.created_at).getTime()) / 1000));
+
+const canAct = (o: RideOrder) =>
+  secsLeft(o) > 0 && ['pending', 'accepted'].includes(o.status);
+
+const fmtCountdown = (s: number) =>
+  `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export const MyOrders: React.FC = () => {
-  const { user, addNotification } = useApp();
+  const { user, addNotification, setCurrentPage } = useApp();
   const [orders, setOrders]         = useState<RideOrder[]>([]);
   const [loading, setLoading]       = useState(true);
   const [toast, setToast]           = useState('');
   const [sheetOrder, setSheetOrder] = useState<RideOrder | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [, forceUpdate]             = useState(0);
   const prevStatuses                = useRef<Record<string, string>>({});
 
   const showToast = (msg: string) => {
@@ -219,9 +231,45 @@ export const MyOrders: React.FC = () => {
     const channel = supabase
       .channel('my_orders_realtime')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ride_orders' }, () => load())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ride_orders' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Tick every second while any order is within the action window
+  useEffect(() => {
+    if (!orders.some(canAct)) return;
+    const id = setInterval(() => forceUpdate(n => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [orders]);
+
+  const handleCancel = async (o: RideOrder) => {
+    if (cancellingId) return;
+    setCancellingId(o.id);
+    const { data, error } = await supabase.rpc('cancel_customer_order', { p_order_id: o.id });
+    setCancellingId(null);
+    if (error || !data?.success) {
+      showToast(data?.error ?? error?.message ?? 'Could not cancel order.');
+    } else {
+      showToast('Order cancelled.');
+      load();
+    }
+  };
+
+  const handleEdit = async (o: RideOrder) => {
+    if (o.status === 'accepted') {
+      showToast('A driver has already accepted your ride — it cannot be edited.');
+      return;
+    }
+    setCancellingId(o.id);
+    const { data } = await supabase.rpc('cancel_customer_order', { p_order_id: o.id });
+    setCancellingId(null);
+    if (data?.success) {
+      setCurrentPage('transport');
+    } else {
+      showToast(data?.error ?? 'Could not edit order.');
+    }
+  };
 
   return (
     <div className="flex-grow bg-slate-50/50 overflow-y-auto no-scrollbar pb-6 animate-fade-in">
@@ -308,6 +356,48 @@ export const MyOrders: React.FC = () => {
                   </>
                 )}
               </div>
+
+              {/* 5-minute action window */}
+              {canAct(o) && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-[10px] font-semibold px-0.5">
+                    <span className="text-slate-400">Quick actions</span>
+                    <span className="font-mono text-primary">{fmtCountdown(secsLeft(o))} left</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(o)}
+                      disabled={!!cancellingId}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-slate-100 text-slate-700 font-extrabold text-xs py-2.5 rounded-xl transition active:scale-[0.98] disabled:opacity-40"
+                    >
+                      Edit Booking
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage('transport')}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-primary text-white font-extrabold text-xs py-2.5 rounded-xl shadow-md shadow-primary/20 transition active:scale-[0.98]"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      New Booking
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => handleCancel(o)}
+                    disabled={!!cancellingId}
+                    className="w-full flex items-center justify-center gap-1.5 border border-red-200 text-red-500 bg-red-50 font-extrabold text-xs py-2.5 rounded-xl transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    {cancellingId === o.id ? (
+                      <span className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <XCircle className="w-3.5 h-3.5" />
+                        Cancel Order
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

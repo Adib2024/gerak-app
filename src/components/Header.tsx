@@ -47,33 +47,33 @@ export const Header: React.FC = () => {
         </div>
         </div>
 
-        {/* Center: role switcher — superadmin always, admin only if canDrive */}
-        {!isPreviewMode && (user.role === 'superadmin' || (user.role === 'admin' && user.canDrive)) && (
-          <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
-            <button
-              onClick={switchToAdminMode}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition active:scale-95 ${
-                activeRole !== 'driver' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              onClick={switchToDriverMode}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition active:scale-95 ${
-                activeRole === 'driver' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
-              }`}
-            >
-              Driver
-            </button>
-          </div>
-        )}
-
-        {/* Right: Notifications */}
+        {/* Right: role switcher + bell */}
         <div className="flex items-center gap-2">
 
+          {/* Role switcher pill — superadmin always, admin only if canDrive */}
+          {!isPreviewMode && (user.role === 'superadmin' || (user.role === 'admin' && user.canDrive)) && (
+            <div className="flex bg-slate-100 rounded-lg p-0.5 gap-0.5">
+              <button
+                onClick={switchToAdminMode}
+                className={`px-2.5 py-1 rounded-md text-[9px] font-extrabold transition active:scale-95 ${
+                  activeRole !== 'driver' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'
+                }`}
+              >
+                Admin
+              </button>
+              <button
+                onClick={switchToDriverMode}
+                className={`px-2.5 py-1 rounded-md text-[9px] font-extrabold transition active:scale-95 ${
+                  activeRole === 'driver' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+                }`}
+              >
+                Driver
+              </button>
+            </div>
+          )}
+
           {/* Notification Bell */}
-          <button 
+          <button
             onClick={() => setCurrentPage('notifications')}
             className="relative p-2.5 text-slate-600 hover:text-primary rounded-full hover:bg-slate-50 transition active:scale-90"
             aria-label="Inbox"

@@ -6,8 +6,9 @@ import {
   AlertCircle, RefreshCw, Trash2, MapPin, Navigation,
   UserPlus, Mail, X, Send, ChevronDown, ChevronUp, Megaphone, Plus, ToggleLeft, ToggleRight,
   FileImage, ShieldCheck, ShieldOff, ExternalLink, KeyRound,
-  CalendarDays, Upload, Eye,
+  CalendarDays, Upload, Eye, Phone,
 } from 'lucide-react';
+import { WaBtn, WaIcon, toWa } from '../lib/whatsapp';
 
 interface RideOrder {
   id: string;
@@ -116,6 +117,99 @@ type PendingAction =
   | { type: 'campus';        u: ProfileUser; campus: 'Pekan' | 'Gambang' }
   | { type: 'toggle-role';   u: ProfileUser; newRole: 'driver' | 'admin' };
 
+// ── Profile detail sheet ─────────────────────────────────────────────────────
+const ProfileSheet: React.FC<{ u: ProfileUser; onClose: () => void }> = ({ u, onClose }) => (
+  <div
+    className="fixed inset-0 z-50 flex items-end justify-center"
+    style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}
+    onClick={onClose}
+  >
+    <div
+      className="w-full max-w-[480px] bg-white rounded-t-3xl shadow-2xl animate-slide-up"
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex justify-center pt-3 pb-1">
+        <div className="w-10 h-1 bg-slate-200 rounded-full" />
+      </div>
+
+      <div className="flex items-center justify-between px-5 pt-2 pb-4">
+        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Profile</p>
+        <button
+          onClick={onClose}
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-90 transition"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Avatar + name */}
+      <div className="flex flex-col items-center px-5 pb-4 gap-2">
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-lg ${
+          u.role === 'superadmin' ? 'bg-violet-600 shadow-violet-200' :
+          u.role === 'admin'      ? 'bg-blue-600 shadow-blue-200' :
+                                    'bg-emerald-600 shadow-emerald-200'
+        }`}>
+          {u.role === 'driver'
+            ? <Car className="w-9 h-9 text-white" />
+            : <ShieldCheck className="w-9 h-9 text-white" />}
+        </div>
+        <div className="text-center mt-1">
+          <p className="text-xl font-black text-slate-800">{u.name}</p>
+          <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+            u.role === 'superadmin' ? 'bg-violet-50 border-violet-100 text-violet-600' :
+            u.role === 'admin'      ? 'bg-blue-50 border-blue-100 text-blue-600' :
+                                      'bg-emerald-50 border-emerald-100 text-emerald-600'
+          }`}>
+            <ShieldCheck className="w-3 h-3" />
+            {u.role}
+          </span>
+        </div>
+      </div>
+
+      {/* Receipt-style info block */}
+      <div className="mx-4 mb-4 bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs font-mono text-slate-700 space-y-1.5 leading-relaxed">
+        <p><span className="text-slate-400">Gerak ID:</span> <span className="text-emerald-600 font-bold">{u.gerak_id}</span></p>
+        <p><span className="text-slate-400">Campus:</span> UMPSA {u.campus}</p>
+        <p><span className="text-slate-400">Email:</span> {u.email}</p>
+        <p className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-slate-400">Phone:</span>
+          <span>{u.phone || '—'}</span>
+          {u.phone && (
+            <a
+              href={`https://wa.me/${toWa(u.phone)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-[#25D366] active:scale-90 transition"
+              aria-label="WhatsApp"
+            >
+              <WaIcon className="w-3.5 h-3.5" />
+            </a>
+          )}
+        </p>
+        <p><span className="text-slate-400">Status:</span>{' '}
+          <span className={u.status === 'active' ? 'text-emerald-600 font-bold' : 'text-red-500 font-bold'}>
+            {u.status}
+          </span>
+        </p>
+      </div>
+
+      {/* Call + WA buttons */}
+      {u.phone && (
+        <div className="px-4 pb-6 flex gap-3">
+          <a
+            href={`tel:${u.phone}`}
+            className="flex-1 flex items-center justify-center gap-2 bg-slate-800 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-md active:scale-[0.98] transition"
+          >
+            <Phone className="w-4 h-4" /> Call
+          </a>
+          <WaBtn phone={u.phone} variant="full" label="WhatsApp" />
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 // ── Shared user card ────────────────────────────────────────────────────────
 const UserCard: React.FC<{
   u: ProfileUser;
@@ -128,11 +222,16 @@ const UserCard: React.FC<{
   onTerminate: (u: ProfileUser) => void;
   onCapToggle?: (u: ProfileUser, canDrive: boolean, canRent: boolean) => void;
   onCampusChange?: (u: ProfileUser, campus: 'Pekan' | 'Gambang') => void;
-}> = ({ u, canManage, togglingStatus, terminating, togglingCap, togglingCampus, onToggle, onTerminate, onCapToggle, onCampusChange }) => (
+  onViewProfile?: (u: ProfileUser) => void;
+}> = ({ u, canManage, togglingStatus, terminating, togglingCap, togglingCampus, onToggle, onTerminate, onCapToggle, onCampusChange, onViewProfile }) => (
   <div className={`rounded-2xl border p-4 flex flex-col gap-2.5 ${
     u.status === 'inactive' ? 'bg-red-50/50 border-red-100' : 'bg-white border-slate-100'
   }`}>
-    <div className="flex-1 min-w-0">
+    <button
+      type="button"
+      onClick={() => onViewProfile?.(u)}
+      className="flex-1 min-w-0 text-left active:opacity-70 transition"
+    >
       <div className="flex items-center gap-2 flex-wrap">
         <p className="text-xs font-black text-slate-800 truncate">{u.name}</p>
         <span className={`text-[10px] font-semibold uppercase shrink-0 ${
@@ -150,7 +249,7 @@ const UserCard: React.FC<{
       </div>
       <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{u.gerak_id} · UMPSA {u.campus}</p>
       <p className="text-[10px] text-slate-400 truncate">{u.email}</p>
-    </div>
+    </button>
 
 
     {/* Capability toggles — drivers only */}
@@ -272,6 +371,7 @@ export const AdminHome: React.FC = () => {
   const [searching, setSearching]           = useState(false);
   const [pendingAction, setPendingAction]   = useState<PendingAction | null>(null);
   const [staffFilter, setStaffFilter]       = useState<'all' | 'drivers' | 'admins'>('all');
+  const [sheetUser, setSheetUser]           = useState<ProfileUser | null>(null);
 
   // Banners state
   const [announcements, setAnnouncements]       = useState<Announcement[]>([]);
@@ -694,6 +794,9 @@ export const AdminHome: React.FC = () => {
         </div>
       )}
 
+      {/* Profile sheet */}
+      {sheetUser && <ProfileSheet u={sheetUser} onClose={() => setSheetUser(null)} />}
+
       {/* Tab switcher */}
       <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm flex-wrap">
         {([
@@ -906,7 +1009,8 @@ export const AdminHome: React.FC = () => {
                 togglingCap={togglingCap} togglingCampus={togglingCampus}
                 onToggle={handleToggleStatus} onTerminate={handleTerminate}
                 onCapToggle={user.role === 'superadmin' ? handleToggleCapability : undefined}
-                onCampusChange={user.role === 'superadmin' ? handleChangeCampus : undefined} />
+                onCampusChange={user.role === 'superadmin' ? handleChangeCampus : undefined}
+                onViewProfile={setSheetUser} />
             )}
           </div>
 
@@ -953,7 +1057,8 @@ export const AdminHome: React.FC = () => {
                         onToggle={u => setPendingAction({ type: 'toggle-status', u })}
                         onTerminate={u => setPendingAction({ type: 'terminate', u })}
                         onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
-                        onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined} />
+                        onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
+                        onViewProfile={setSheetUser} />
                     ))}
                   </div>
                 );
