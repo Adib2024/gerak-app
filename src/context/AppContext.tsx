@@ -101,6 +101,9 @@ interface AppContextType {
   isPreviewMode: boolean;
   enterPreviewMode: () => void;
   exitPreviewMode: () => void;
+  activeRole: 'admin' | 'driver' | null;
+  switchToDriverMode: () => void;
+  switchToAdminMode: () => void;
   user: UserSession;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
   register: (name: string, matricNo: string, email: string, password: string, phone: string, university: string, campus: string) => Promise<{ error: string | null }>;
@@ -135,6 +138,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentPage, _setCurrentPage] = useState<ActivePage>('splash');
   const [pageHistory, setPageHistory] = useState<ActivePage[]>([]);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [activeRole, setActiveRole] = useState<'admin' | 'driver' | null>(null);
 
   const HISTORY_EXCLUDED: ActivePage[] = ['splash', 'login'];
   const HOME_PAGES: ActivePage[] = ['dashboard', 'driver-home', 'admin-home'];
@@ -308,8 +312,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
       } else if (role === 'superadmin' || role === 'admin') {
+        setActiveRole('admin');
         _setCurrentPage('admin-home');
       } else {
+        setActiveRole(null);
         _setCurrentPage('dashboard');
       }
     }
@@ -384,6 +390,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
 
+  const switchToDriverMode = () => {
+    setActiveRole('driver');
+    setPageHistory([]);
+    _setCurrentPage('driver-home');
+  };
+
+  const switchToAdminMode = () => {
+    setActiveRole('admin');
+    setPageHistory([]);
+    _setCurrentPage('admin-home');
+  };
+
   const enterPreviewMode = () => {
     setIsPreviewMode(true);
     setPageHistory([]);
@@ -400,6 +418,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setPageHistory([]);
+    setActiveRole(null);
+    setIsPreviewMode(false);
     setUser({ name: '', matricNo: '', email: '', phone: '', university: '', campus: '', gerakId: '', role: 'customer', status: 'active', vehicle: '', plateNumber: '', feeReceiptUrl: '', feeReceiptVerified: false, feeReceiptAmount: '', feeReceiptDate: '', feeReceiptExpiry: '', feeReceiptRejectReason: '', canDrive: false, canRent: false, points: 0, isLoggedIn: false });
     setActiveRide(null);
     setJubahBooking(null);
@@ -606,6 +626,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isPreviewMode,
         enterPreviewMode,
         exitPreviewMode,
+        activeRole,
+        switchToDriverMode,
+        switchToAdminMode,
         user,
         login,
         register,

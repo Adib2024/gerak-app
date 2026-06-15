@@ -4,13 +4,13 @@ import type { ActivePage } from '../context/AppContext';
 import { Home, UserCircle, Briefcase, LayoutDashboard, CalendarDays } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
-  const { currentPage, setCurrentPage, user, isPreviewMode } = useApp();
+  const { currentPage, setCurrentPage, user, isPreviewMode, activeRole } = useApp();
 
   if (currentPage === 'splash' || currentPage === 'login' || currentPage === 'register' || currentPage === 'forgot-password' || currentPage === 'reset-password') {
     return null;
   }
 
-  const role = isPreviewMode ? 'customer' : user.role;
+  const role = isPreviewMode ? 'customer' : (activeRole === 'driver' ? 'driver' : user.role);
 
   // Driver nav
   const driverItems = [

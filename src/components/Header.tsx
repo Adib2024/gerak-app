@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Bell, ChevronLeft } from 'lucide-react';
 
 export const Header: React.FC = () => {
-  const { currentPage, setCurrentPage, goBack, canGoBack, notifications, user } = useApp();
+  const { currentPage, setCurrentPage, goBack, canGoBack, notifications, user, activeRole, switchToDriverMode, switchToAdminMode, isPreviewMode } = useApp();
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -31,7 +31,9 @@ export const Header: React.FC = () => {
         <div
           className="flex items-center gap-2 cursor-pointer transition active:scale-95"
           onClick={() => {
-            if (user.role === 'driver') setCurrentPage('driver-home');
+            if (activeRole === 'driver') setCurrentPage('driver-home');
+            else if (activeRole === 'admin') setCurrentPage('admin-home');
+            else if (user.role === 'driver') setCurrentPage('driver-home');
             else if (user.role === 'admin' || user.role === 'superadmin') setCurrentPage('admin-home');
             else setCurrentPage('dashboard');
           }}
@@ -45,7 +47,29 @@ export const Header: React.FC = () => {
         </div>
         </div>
 
-        {/* Right: Points & Notifications */}
+        {/* Center: role switcher — admin/superadmin with canDrive only */}
+        {!isPreviewMode && (user.role === 'admin' || user.role === 'superadmin') && user.canDrive && (
+          <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
+            <button
+              onClick={switchToAdminMode}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition active:scale-95 ${
+                activeRole !== 'driver' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              Admin
+            </button>
+            <button
+              onClick={switchToDriverMode}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold transition active:scale-95 ${
+                activeRole === 'driver' ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              Driver
+            </button>
+          </div>
+        )}
+
+        {/* Right: Notifications */}
         <div className="flex items-center gap-2">
 
           {/* Notification Bell */}
