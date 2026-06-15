@@ -6,7 +6,7 @@ import {
   CheckCircle2, RefreshCw, Briefcase,
   ListOrdered, XCircle, ShieldOff, KeyRound,
   ChevronLeft, ChevronRight, Settings, CalendarDays,
-  Package, Ban, Unlock, Hash, X,
+  Package, Ban, Unlock, Hash, X, TrendingUp,
 } from 'lucide-react';
 import { WaIcon, toWa } from '../lib/whatsapp';
 
@@ -65,7 +65,7 @@ interface RideOrder {
   accepted_at: string | null;
 }
 
-type DriverTab = 'pool' | 'my-jobs' | 'rental';
+type DriverTab = 'pool' | 'my-jobs' | 'rental' | 'earnings';
 
 const HISTORY_STATUS: Record<string, { label: string; cls: string }> = {
   accepted:    { label: 'Accepted',    cls: 'bg-blue-50 text-blue-600 border-blue-200' },
@@ -103,6 +103,7 @@ export const DriverHome: React.FC = () => {
   const [vehicleSaving,        setVehicleSaving]        = useState(false);
   const [pendingRentals,       setPendingRentals]       = useState(0);
   const [rentalReceiptBk,      setRentalReceiptBk]      = useState<RentalBookingOwner | null>(null);
+  const [earningsFilter, setEarningsFilter]             = useState<'month' | 'all'>('month');
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -456,6 +457,19 @@ export const DriverHome: React.FC = () => {
                   myJob.status === 'in_progress' ? 'bg-blue-400' : 'bg-emerald-400'
                 } ${activeTab === 'my-jobs' ? 'bg-white' : ''} animate-pulse`} />
               )}
+            </button>
+          )}
+
+          {/* Earnings tab — only if can_drive */}
+          {user.canDrive && (
+            <button
+              onClick={() => setActiveTab('earnings')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition ${
+                activeTab === 'earnings' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Earnings
             </button>
           )}
 
@@ -842,6 +856,96 @@ export const DriverHome: React.FC = () => {
 
         </div>
       )}
+
+      {/* ══════════════════════════════════════════
+          TAB: EARNINGS
+      ══════════════════════════════════════════ */}
+      {!loading && activeTab === 'earnings' && user.canDrive && (() => {
+        const completed = myHistory.filter(o => o.status === 'completed');
+        const now = new Date();
+        const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const filtered = earningsFilter === 'month'
+          ? completed.filter(o => o.date.startsWith(monthPrefix))
+          : completed;
+        const totalEarned = filtered
+          .filter(o => o.fare !== 'TBC')
+          .reduce((sum, o) => sum + Number(o.fare) + (o.night_charge ?? 0), 0);
+        const tbcCount = filtered.filter(o => o.fare === 'TBC').length;
+
+        return (
+          <div className="flex flex-col gap-3 px-4">
+
+            {/* Filter toggle */}
+            <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
+              {(['month', 'all'] as const).map(f => (
+                <button key={f} onClick={() => setEarningsFilter(f)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
+                    earningsFilter === f ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400'
+                  }`}>
+                  {f === 'month' ? 'This Month' : 'All Time'}
+                </button>
+              ))}
+            </div>
+
+            {/* Summary card */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                {earningsFilter === 'month' ? `${now.toLocaleString('en-MY', { month: 'long' })} ${now.getFullYear()}` : 'All Time'} Earnings
+              </p>
+
+              <div className="flex items-end gap-3 flex-wrap">
+                <div>
+                  <p className="text-[9px] text-slate-400 font-semibold mb-0.5">Cash Fare</p>
+                  <p className="text-3xl font-black text-slate-800 leading-none">
+                    RM <span className="text-emerald-500">{totalEarned.toFixed(2)}</span>
+                  </p>
+                </div>
+                {tbcCount > 0 && (
+                  <>
+                    <p className="text-xl font-black text-slate-300 mb-0.5">+</p>
+                    <div>
+                      <p className="text-[9px] text-slate-400 font-semibold mb-0.5">TBC Rides</p>
+                      <p className="text-3xl font-black text-slate-800 leading-none">
+                        TBC <span className="text-amber-500">({tbcCount})</span>
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <div className="flex-1 bg-slate-50 rounded-2xl px-3 py-2.5 text-center">
+                  <p className="text-lg font-black text-slate-700">{filtered.length}</p>
+                  <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Completed</p>
+                </div>
+                <div className="flex-1 bg-emerald-50 rounded-2xl px-3 py-2.5 text-center">
+                  <p className="text-lg font-black text-emerald-600">{filtered.filter(o => o.fare !== 'TBC').length}</p>
+                  <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Cash Rides</p>
+                </div>
+                {tbcCount > 0 && (
+                  <div className="flex-1 bg-amber-50 rounded-2xl px-3 py-2.5 text-center">
+                    <p className="text-lg font-black text-amber-600">{tbcCount}</p>
+                    <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">TBC Rides</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-slate-300" />
+                </div>
+                <p className="text-sm font-black text-slate-500">No completed rides yet</p>
+                <p className="text-xs text-slate-400 font-semibold">
+                  {earningsFilter === 'month' ? 'No rides completed this month.' : 'Complete your first ride to see earnings.'}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ══════════════════════════════════════════
           TAB 3: RENTAL (owners only)
