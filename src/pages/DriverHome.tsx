@@ -107,7 +107,9 @@ export const DriverHome: React.FC = () => {
     setTimeout(() => setToast(''), 3000);
   };
 
-  const isDriverActive = user.feeReceiptVerified && !!user.feeReceiptExpiry && new Date(user.feeReceiptExpiry) > new Date();
+  // Admins in driver mode bypass the receipt gate — they're trusted staff
+  const isDriverActive = (user.role === 'admin' || user.role === 'superadmin')
+    || (user.feeReceiptVerified && !!user.feeReceiptExpiry && new Date(user.feeReceiptExpiry) > new Date());
 
   // ── Rental helpers ────────────────────────────────────────────────────────
   const loadRentalData = useCallback(async () => {
