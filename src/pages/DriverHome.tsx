@@ -301,10 +301,14 @@ export const DriverHome: React.FC = () => {
 
   const handleAccept = async (orderId: string) => {
     setAccepting(orderId);
+    // Optimistically remove from pool so it vanishes instantly for this driver
+    setPendingOrders(prev => prev.filter(o => o.id !== orderId));
     const { data, error } = await supabase.rpc('accept_ride_order', { p_order_id: orderId });
     setAccepting(null);
     if (error || !data?.success) {
-      showToast(data?.error ?? 'Failed to accept — try again.');
+      // Race lost — job was already taken; refresh pool and inform driver
+      showToast('🔒 Job just taken by another driver.');
+      loadOrders();
     } else {
       showToast('Job accepted! Check My Jobs tab.');
       setActiveTab('my-jobs');
