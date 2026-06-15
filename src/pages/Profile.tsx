@@ -461,7 +461,7 @@ export const Profile: React.FC = () => {
       {/* ── ACTIONS ── */}
       <div className="mx-5 mt-5 bg-white border border-slate-100 rounded-3xl p-2.5 shadow-sm flex flex-col gap-1">
         <button onClick={() => alert('Campus Information Guide: gerak connects robe booking portals and shuttle systems.')}
-          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition text-left cursor-pointer">
+          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 active:scale-[0.99] transition text-left cursor-pointer">
           <div className="flex items-center gap-3">
             <HelpCircle className="w-4 h-4 text-slate-400" />
             <span className="text-xs font-extrabold text-slate-700">Help &amp; User Guide</span>
@@ -469,7 +469,7 @@ export const Profile: React.FC = () => {
           <ChevronRight className="w-4 h-4 text-slate-300" />
         </button>
         <button onClick={() => alert('Simulated Terms of Campus Services')}
-          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition text-left border-t border-slate-50 cursor-pointer">
+          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 active:scale-[0.99] transition text-left border-t border-slate-50 cursor-pointer">
           <div className="flex items-center gap-3">
             <Heart className="w-4 h-4 text-slate-400" />
             <span className="text-xs font-extrabold text-slate-700">Privacy &amp; Terms</span>
@@ -477,7 +477,7 @@ export const Profile: React.FC = () => {
           <ChevronRight className="w-4 h-4 text-slate-300" />
         </button>
         <button onClick={logout}
-          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-danger/5 transition text-left border-t border-slate-50 group cursor-pointer">
+          className="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-danger/5 active:scale-[0.99] transition text-left border-t border-slate-50 group cursor-pointer">
           <div className="flex items-center gap-3">
             <LogOut className="w-4 h-4 text-slate-400 group-hover:text-danger" />
             <span className="text-xs font-extrabold text-slate-700 group-hover:text-danger">Log Out Session</span>

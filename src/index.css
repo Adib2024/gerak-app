@@ -57,6 +57,14 @@
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent; /* remove grey flash on tap */
+  user-select: none;           /* native app feel — nothing selectable by default */
+  -webkit-user-select: none;
+}
+
+/* Re-enable selection only where text entry is expected */
+input, textarea, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 #root {
