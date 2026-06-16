@@ -639,7 +639,7 @@ export const AdminHome: React.FC = () => {
     const { data } = await supabase.rpc('search_profile_by_gerak_id', { p_gerak_id: searchGerakId.trim() });
     setSearching(false);
     const results = data as ProfileUser[] | null;
-    const driver = results?.find(r => r.role === 'driver') ?? null;
+    const driver = results?.find(r => r.role === 'driver' || (r.can_drive && ['admin','superadmin'].includes(r.role))) ?? null;
     setSearchResult(driver ?? 'not_found');
   };
 
@@ -1039,33 +1039,35 @@ export const AdminHome: React.FC = () => {
               ))}
             </div>
 
-            {usersLoading ? (
-              <div className="flex justify-center py-8">
-                <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
-              </div>
-            ) : (() => {
-              const filtered = profileUsers.filter(u =>
-                staffFilter === 'all'     ? true :
-                staffFilter === 'drivers' ? u.role === 'driver' :
-                ['admin', 'superadmin'].includes(u.role)
-              );
-              return filtered.length === 0
-                ? <p className="text-xs text-slate-400 text-center py-4">No {staffFilter === 'all' ? 'staff' : staffFilter} found</p>
-                : (
-                  <div className="flex flex-col gap-2">
-                    {filtered.map(u => (
-                      <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
-                        togglingStatus={togglingStatus} terminating={terminating}
-                        togglingCap={togglingCap} togglingCampus={togglingCampus}
-                        onToggle={u => setPendingAction({ type: 'toggle-status', u })}
-                        onTerminate={u => setPendingAction({ type: 'terminate', u })}
-                        onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
-                        onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
-                        onViewProfile={setSheetUser} />
-                    ))}
-                  </div>
+            <div className="overflow-y-auto no-scrollbar max-h-[420px] flex flex-col gap-2">
+              {usersLoading ? (
+                <div className="flex justify-center py-8">
+                  <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
+                </div>
+              ) : (() => {
+                const filtered = profileUsers.filter(u =>
+                  staffFilter === 'all'     ? true :
+                  staffFilter === 'drivers' ? u.role === 'driver' :
+                  ['admin', 'superadmin'].includes(u.role)
                 );
-            })()}
+                return filtered.length === 0
+                  ? <p className="text-xs text-slate-400 text-center py-4">No {staffFilter === 'all' ? 'staff' : staffFilter} found</p>
+                  : (
+                    <div className="flex flex-col gap-2">
+                      {filtered.map(u => (
+                        <UserCard key={u.id} u={u} canManage={canManage(u.role, u.id)}
+                          togglingStatus={togglingStatus} terminating={terminating}
+                          togglingCap={togglingCap} togglingCampus={togglingCampus}
+                          onToggle={u => setPendingAction({ type: 'toggle-status', u })}
+                          onTerminate={u => setPendingAction({ type: 'terminate', u })}
+                          onCapToggle={user.role === 'superadmin' ? (u, canDrive, canRent) => setPendingAction({ type: 'toggle-cap', u, canDrive, canRent }) : undefined}
+                          onCampusChange={user.role === 'superadmin' ? (u, campus) => setPendingAction({ type: 'campus', u, campus }) : undefined}
+                          onViewProfile={setSheetUser} />
+                      ))}
+                    </div>
+                  );
+              })()}
+            </div>
           </div>
         </div>
       )}
