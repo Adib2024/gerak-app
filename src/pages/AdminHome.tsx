@@ -102,6 +102,7 @@ interface DriverReceipt {
   campus: string;
   email: string;
   phone: string;
+  status: string;
   fee_receipt_url: string;
   fee_receipt_verified: boolean;
   fee_receipt_amount: string;
@@ -709,7 +710,7 @@ export const AdminHome: React.FC = () => {
     setReceiptsLoading(true);
     const { data } = await supabase
       .from('profiles')
-      .select('id, name, gerak_id, campus, email, phone, fee_receipt_url, fee_receipt_verified, fee_receipt_amount, fee_receipt_date, fee_receipt_expiry, fee_receipt_reject_reason')
+      .select('id, name, gerak_id, campus, email, phone, status, fee_receipt_url, fee_receipt_verified, fee_receipt_amount, fee_receipt_date, fee_receipt_expiry, fee_receipt_reject_reason')
       .eq('role', 'driver')
       .order('name');
     setDriverReceipts((data as DriverReceipt[]) ?? []);
@@ -1512,7 +1513,10 @@ export const AdminHome: React.FC = () => {
                   const expDate = r.fee_receipt_expiry ? new Date(r.fee_receipt_expiry) : null;
                   const expLabel = expDate?.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
                   return (
-                    <div key={r.id} className="border border-slate-100 rounded-2xl p-4 flex flex-col gap-2.5">
+                    <div key={r.id}
+                      className="border border-slate-100 rounded-2xl p-4 flex flex-col gap-2.5 cursor-pointer active:opacity-75 transition"
+                      onClick={() => setSheetUser({ id: r.id, name: r.name, gerak_id: r.gerak_id, role: 'driver', campus: r.campus, email: r.email, status: r.status || 'active', phone: r.phone || '' })}
+                    >
 
                       {/* Row 1: name + status badge */}
                       <div className="flex items-start justify-between gap-2">
@@ -1554,6 +1558,7 @@ export const AdminHome: React.FC = () => {
                       {/* View receipt link */}
                       {r.fee_receipt_url && (
                         <a href={r.fee_receipt_url} target="_blank" rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
                           className="flex items-center justify-center gap-1.5 bg-primary/5 border border-primary/20 text-primary font-extrabold text-[10px] py-2 rounded-xl hover:bg-primary/10 transition active:scale-95">
                           <ExternalLink className="w-3 h-3" /> View Receipt
                         </a>
@@ -1561,7 +1566,7 @@ export const AdminHome: React.FC = () => {
 
                       {/* Approve / Reject — pending receipts only */}
                       {status === 'pending' && r.fee_receipt_url && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => handleApproveReceipt(r)}
                             disabled={approvingReceipt === r.id || rejectingReceipt === r.id}
