@@ -1433,14 +1433,6 @@ export const AdminHome: React.FC = () => {
                       <Clock className="w-3 h-3" /> Cancel
                     </button>
                   )}
-                  {order.status === 'completed' && (
-                    <button
-                      onClick={() => handleForceStatus(order.id, 'pending')}
-                      className="flex-1 bg-amber-50 border border-amber-100 text-amber-600 font-extrabold text-[10px] py-2 rounded-xl transition active:scale-95 flex items-center justify-center gap-1"
-                    >
-                      <CheckCircle2 className="w-3 h-3" /> Re-open
-                    </button>
-                  )}
                   <button
                     onClick={() => handleDelete(order.id)}
                     disabled={deleting === order.id}
