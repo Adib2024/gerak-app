@@ -145,9 +145,11 @@ const MonthDrumPicker: React.FC<{ value: string; onChange: (m: string) => void }
 };
 
 export const DriverHome: React.FC = () => {
-  const { user } = useApp();
+  const { user, activeRole } = useApp();
+  // Admin/superadmin who switched the pill to Driver should behave as a full driver
+  const effectiveCanDrive = user.canDrive || activeRole === 'driver';
 
-  const [activeTab, setActiveTab]           = useState<DriverTab>(!user.canDrive && user.canRent ? 'rental' : 'pool');
+  const [activeTab, setActiveTab]           = useState<DriverTab>(!effectiveCanDrive && user.canRent ? 'rental' : 'pool');
   const [pendingOrders, setPendingOrders]   = useState<RideOrder[]>([]);
   const [myJob, setMyJob]                   = useState<RideOrder | null>(null);
   const [myHistory, setMyHistory]           = useState<RideOrder[]>([]);
@@ -358,11 +360,11 @@ export const DriverHome: React.FC = () => {
 
   // Request notification permission once when driver loads
   useEffect(() => {
-    if (!user.canDrive) return;
+    if (!effectiveCanDrive) return;
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
-  }, [user.canDrive]);
+  }, [effectiveCanDrive]);
 
   // Debounce ref: group rapid-fire inserts into one notification
   const notifTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -407,7 +409,7 @@ export const DriverHome: React.FC = () => {
   }, [playChime]);
 
   useEffect(() => {
-    if (!user.canDrive) { setLoading(false); return; }
+    if (!effectiveCanDrive) { setLoading(false); return; }
     loadOrders();
     const channel = supabase
       .channel('ride_orders_driver')
@@ -421,7 +423,7 @@ export const DriverHome: React.FC = () => {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [loadOrders, user.canDrive, fireNotification]);
+  }, [loadOrders, effectiveCanDrive, fireNotification]);
 
   useEffect(() => {
     if (!user.canRent) return;
@@ -559,7 +561,7 @@ export const DriverHome: React.FC = () => {
         <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
 
           {/* Pool tab — only if can_drive */}
-          {user.canDrive && (
+          {effectiveCanDrive && (
             <button
               onClick={() => setActiveTab('pool')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition relative ${
@@ -581,7 +583,7 @@ export const DriverHome: React.FC = () => {
           )}
 
           {/* My Jobs tab — only if can_drive */}
-          {user.canDrive && (
+          {effectiveCanDrive && (
             <button
               onClick={() => setActiveTab('my-jobs')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition relative ${
@@ -599,7 +601,7 @@ export const DriverHome: React.FC = () => {
           )}
 
           {/* Earnings tab — only if can_drive */}
-          {user.canDrive && (
+          {effectiveCanDrive && (
             <button
               onClick={() => setActiveTab('earnings')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition ${
@@ -1004,7 +1006,7 @@ export const DriverHome: React.FC = () => {
       {/* ══════════════════════════════════════════
           TAB: EARNINGS
       ══════════════════════════════════════════ */}
-      {!loading && activeTab === 'earnings' && user.canDrive && (() => {
+      {!loading && activeTab === 'earnings' && effectiveCanDrive && (() => {
         const completed = myHistory.filter(o => o.status === 'completed');
 
         // Month card — filtered by drum picker selection
