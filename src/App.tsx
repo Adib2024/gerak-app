@@ -327,6 +327,15 @@ const AppContent: React.FC = () => {
 };
 
 function App() {
+  useEffect(() => {
+    // Trap iOS Safari swipe-back: keep a dummy history entry so the native
+    // gesture never navigates outside the PWA, regardless of role or page.
+    history.pushState(null, '');
+    const onPop = () => history.pushState(null, '');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
   return (
     <AppProvider>
       <InstallPrompt />
