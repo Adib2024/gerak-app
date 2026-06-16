@@ -639,7 +639,8 @@ export const AdminHome: React.FC = () => {
     const { data } = await supabase.rpc('search_profile_by_gerak_id', { p_gerak_id: searchGerakId.trim() });
     setSearching(false);
     const results = data as ProfileUser[] | null;
-    setSearchResult(results && results.length > 0 ? results[0] : 'not_found');
+    const driver = results?.find(r => r.role === 'driver') ?? null;
+    setSearchResult(driver ?? 'not_found');
   };
 
   const handleToggleStatus = async (u: ProfileUser) => {
@@ -976,10 +977,10 @@ export const AdminHome: React.FC = () => {
       {activeTab === 'users' && (
         <div className="flex flex-col gap-3">
 
-          {/* Customer search */}
+          {/* Driver search */}
           <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4" /> Find Customer
+              <AlertCircle className="w-4 h-4" /> Find Driver
             </h3>
             <div className="flex gap-2">
               <input
@@ -987,7 +988,7 @@ export const AdminHome: React.FC = () => {
                 value={searchGerakId}
                 onChange={e => { setSearchGerakId(e.target.value.toUpperCase()); setSearchResult(null); }}
                 onKeyDown={e => e.key === 'Enter' && handleSearchGerakId()}
-                placeholder="e.g. GP00001"
+                placeholder="e.g. GDP0001"
                 className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-primary transition uppercase placeholder:normal-case placeholder:font-normal"
               />
               <button
@@ -1003,7 +1004,7 @@ export const AdminHome: React.FC = () => {
 
             {/* Search result */}
             {searchResult === 'not_found' && (
-              <p className="text-xs text-slate-400 font-semibold text-center py-2">No customer found with that Gerak ID.</p>
+              <p className="text-xs text-slate-400 font-semibold text-center py-2">No driver found with that Gerak ID.</p>
             )}
             {searchResult && searchResult !== 'not_found' && (
               <UserCard u={searchResult} canManage={canManage(searchResult.role, searchResult.id)}
