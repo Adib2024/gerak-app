@@ -1761,7 +1761,7 @@ export const AdminHome: React.FC = () => {
             ) : filteredReceipts.length === 0 ? (
               <p className="text-xs text-slate-400 font-semibold text-center py-6">No drivers found.</p>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="overflow-y-auto no-scrollbar max-h-[520px] flex flex-col gap-2">
                 {filteredReceipts.map(r => {
                   const status  = receiptStatus(r);
                   const expDate = r.fee_receipt_expiry ? new Date(r.fee_receipt_expiry) : null;
