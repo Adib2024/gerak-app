@@ -1678,17 +1678,6 @@ export const AdminHome: React.FC = () => {
                     {/* Actions */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleToggleRoute(r)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 font-extrabold text-[10px] py-2 rounded-xl border transition active:scale-95 ${
-                          r.is_active
-                            ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                            : 'bg-slate-100 border-slate-200 text-slate-500'
-                        }`}>
-                        {r.is_active
-                          ? <><ToggleRight className="w-3.5 h-3.5" /> Active</>
-                          : <><ToggleLeft className="w-3.5 h-3.5" /> Inactive</>}
-                      </button>
-                      <button
                         onClick={() => {
                           setEditingRoute(r);
                           setRoutePointA(r.point_a);
