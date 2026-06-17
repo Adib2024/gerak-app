@@ -836,10 +836,6 @@ export const AdminHome: React.FC = () => {
     setSavingRoute(false);
   };
 
-  const handleToggleRoute = async (r: Route) => {
-    await supabase.from('routes').update({ is_active: !r.is_active }).eq('id', r.id);
-    loadRoutes();
-  };
 
   const handleDeleteRoute = async (id: string) => {
     if (!window.confirm('Delete this route?')) return;
