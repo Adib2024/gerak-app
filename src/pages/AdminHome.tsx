@@ -895,7 +895,7 @@ export const AdminHome: React.FC = () => {
       {sheetUser && <ProfileSheet u={sheetUser} onClose={() => setSheetUser(null)} />}
 
       {/* Tab switcher */}
-      <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm flex-wrap">
+      <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm overflow-x-auto no-scrollbar">
         {([
           { id: 'orders',   label: 'Orders',    icon: BarChart3,  superadminOnly: false },
           { id: 'drivers',  label: 'Invite',    icon: Car,        superadminOnly: false },
@@ -908,7 +908,7 @@ export const AdminHome: React.FC = () => {
           .filter(t => !t.superadminOnly || user.role === 'superadmin')
           .map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
+              className={`shrink-0 px-4 py-2 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
                 activeTab === tab.id ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
               }`}
             >
