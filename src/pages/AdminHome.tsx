@@ -1754,6 +1754,7 @@ export const AdminHome: React.FC = () => {
               </button>
             </div>
 
+            <div className="overflow-y-auto no-scrollbar max-h-[420px] flex flex-col gap-2">
             {receiptsLoading ? (
               <div className="flex justify-center py-8">
                 <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
@@ -1846,6 +1847,7 @@ export const AdminHome: React.FC = () => {
                 })}
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
