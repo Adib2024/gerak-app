@@ -706,11 +706,6 @@ export const Transport: React.FC = () => {
               )}
             </div>
           </div>
-          {baseFare !== 'TBC' && baseFare > 0 && (
-            <span className="bg-emerald-50 text-primary border border-emerald-100 rounded-lg px-2 py-1 text-[9px] font-extrabold">
-              +{Math.floor((typeof totalFare === 'number' ? totalFare : baseFare) * 5)} pts
-            </span>
-          )}
         </div>
 
         {/* Book button */}

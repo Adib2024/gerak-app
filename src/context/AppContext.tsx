@@ -39,7 +39,6 @@ export interface UserSession {
   feeReceiptRejectReason: string;
   canDrive: boolean;
   canRent: boolean;
-  points: number;
   isLoggedIn: boolean;
 }
 
@@ -110,7 +109,6 @@ interface AppContextType {
   logout: () => void;
   updateProfile: (updates: { name?: string; matricNo?: string; email?: string; phone?: string; vehicle?: string; plateNumber?: string; feeReceiptUrl?: string }) => Promise<{ error: string | null }>;
   refreshUserData: () => Promise<void>;
-  addPoints: (points: number) => void;
 
   // Notifications
   notifications: NotificationItem[];
@@ -197,7 +195,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     feeReceiptRejectReason: '',
     canDrive: false,
     canRent:  false,
-    points: 0,
     isLoggedIn: false,
   });
 
@@ -300,7 +297,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         feeReceiptRejectReason: data.fee_receipt_reject_reason ?? '',
         canDrive:               data.can_drive ?? (data.role === 'driver'),
         canRent:                data.can_rent  ?? false,
-        points:                 data.points,
         isLoggedIn:             true,
       });
       setPageHistory([]);
@@ -339,12 +335,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // ── Supabase helper: persist points ────────────────────────
-  const persistPoints = (points: number) => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      if (u) supabase.from('profiles').update({ points }).eq('id', u.id);
-    });
-  };
 
   // 1. Session Operations
   const login = async (email: string, password: string): Promise<{ error: string | null }> => {
@@ -442,18 +432,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPageHistory([]);
     setActiveRole(null);
     setIsPreviewMode(false);
-    setUser({ name: '', matricNo: '', email: '', phone: '', university: '', campus: '', gerakId: '', role: 'customer', status: 'active', vehicle: '', plateNumber: '', feeReceiptUrl: '', feeReceiptVerified: false, feeReceiptAmount: '', feeReceiptDate: '', feeReceiptExpiry: '', feeReceiptRejectReason: '', canDrive: false, canRent: false, points: 0, isLoggedIn: false });
+    setUser({ name: '', matricNo: '', email: '', phone: '', university: '', campus: '', gerakId: '', role: 'customer', status: 'active', vehicle: '', plateNumber: '', feeReceiptUrl: '', feeReceiptVerified: false, feeReceiptAmount: '', feeReceiptDate: '', feeReceiptExpiry: '', feeReceiptRejectReason: '', canDrive: false, canRent: false, isLoggedIn: false });
     setActiveRide(null);
     setJubahBooking(null);
     _setCurrentPage('login');
     supabase.auth.signOut();
   };
 
-  const addPoints = (points: number) => {
-    const newPoints = user.points + points;
-    setUser(prev => ({ ...prev, points: newPoints }));
-    persistPoints(newPoints);
-  };
 
   // 2. Notification Operations
   const addNotification = (title: string, description: string, type: NotificationItem['type']) => {
@@ -494,7 +479,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       driver: mockDriver
     };
 
-    addPoints(Math.floor(fare * 5));
     setActiveRide(newBooking);
       if (currentPage !== 'transport') {
         setCurrentPage('transport');
@@ -581,7 +565,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     const cost = paymentMode === 'postage' ? 80.00 : 55.00;
 
-    addPoints(paymentMode === 'postage' ? 200 : 150);
+
 
     const newBooking: JubahBooking = {
       fullName,
@@ -657,7 +641,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logout,
         updateProfile,
         refreshUserData,
-        addPoints,
         notifications,
         addNotification,
         markAllNotificationsRead,

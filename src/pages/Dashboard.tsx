@@ -36,15 +36,6 @@ const FALLBACK_BANNERS: Banner[] = [
     gradient: 'from-blue-700 via-blue-600 to-indigo-500',
   },
   {
-    tag:      '✨ Rewards',
-    title:    'Earn Points Every Ride',
-    subtitle: 'Collect campus reward points with every booking. Redeem for discounts & perks.',
-    cta:      'View My Points',
-    page:     'profile',
-    emoji:    '🏆',
-    gradient: 'from-amber-500 via-orange-500 to-red-500',
-  },
-  {
     tag:      '🗺️ New',
     title:    'Search Routes on Map',
     subtitle: 'Pin your exact pickup & destination anywhere in Malaysia. Driver confirmed fare.',
