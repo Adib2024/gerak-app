@@ -1478,7 +1478,7 @@ export const AdminHome: React.FC = () => {
             <p className="text-xs font-semibold">No orders yet</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="overflow-y-auto no-scrollbar max-h-[520px] flex flex-col gap-3">
             {filtered.map(order => (
               <div key={order.id} className="border border-slate-100 rounded-2xl p-4 flex flex-col gap-2.5">
                 {/* Top row */}
