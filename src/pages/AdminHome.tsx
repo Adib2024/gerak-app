@@ -894,7 +894,8 @@ export const AdminHome: React.FC = () => {
       {/* Profile sheet */}
       {sheetUser && <ProfileSheet u={sheetUser} onClose={() => setSheetUser(null)} />}
 
-      {/* Tab switcher */}
+      {/* Tab switcher — sticky so clicking off-screen tabs never scrolls the page */}
+      <div className="sticky top-0 z-10 -mx-4 px-4 pb-2 bg-slate-50/95 backdrop-blur-sm">
       <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm overflow-x-auto no-scrollbar">
         {([
           { id: 'orders',   label: 'Orders',    icon: BarChart3,  superadminOnly: false },
@@ -917,6 +918,7 @@ export const AdminHome: React.FC = () => {
               {tab.label}
             </button>
           ))}
+      </div>
       </div>
 
       {/* ── DRIVERS TAB ── */}
