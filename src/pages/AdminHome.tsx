@@ -1040,7 +1040,7 @@ export const AdminHome: React.FC = () => {
             ) : invites.length === 0 ? (
               <p className="text-xs text-slate-400 font-semibold text-center py-4">No invites yet</p>
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="overflow-y-auto no-scrollbar max-h-[360px] flex flex-col gap-2">
                 {invites.map(inv => (
                   <div key={inv.id} className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl border ${
                     inv.used ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-100'
