@@ -907,10 +907,9 @@ export const AdminHome: React.FC = () => {
         ] as { id: AdminTab; label: string; icon: React.ElementType; superadminOnly: boolean }[])
           .filter(t => !t.superadminOnly || user.role === 'superadmin')
           .map(tab => (
-            <button key={tab.id} onClick={(e) => {
-                setActiveTab(tab.id);
-                e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-              }}
+            <button key={tab.id}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setActiveTab(tab.id)}
               className={`shrink-0 px-4 py-2 rounded-xl text-xs font-extrabold transition flex items-center justify-center gap-1.5 ${
                 activeTab === tab.id ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
               }`}
