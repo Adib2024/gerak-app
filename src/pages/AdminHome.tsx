@@ -1743,8 +1743,8 @@ export const AdminHome: React.FC = () => {
           </div>
 
           {/* Receipt list */}
-          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3 max-h-[560px]">
-            <div className="flex items-center justify-between shrink-0">
+          <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center justify-between">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                 <FileImage className="w-4 h-4" /> Driver Receipts
               </h3>
@@ -1755,13 +1755,13 @@ export const AdminHome: React.FC = () => {
             </div>
 
             {receiptsLoading ? (
-              <div className="flex justify-center py-8 shrink-0">
+              <div className="flex justify-center py-8">
                 <span className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-primary animate-spin" />
               </div>
             ) : filteredReceipts.length === 0 ? (
-              <p className="text-xs text-slate-400 font-semibold text-center py-6 shrink-0">No drivers found.</p>
+              <p className="text-xs text-slate-400 font-semibold text-center py-6">No drivers found.</p>
             ) : (
-              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar overscroll-contain flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
                 {filteredReceipts.map(r => {
                   const status  = receiptStatus(r);
                   const expDate = r.fee_receipt_expiry ? new Date(r.fee_receipt_expiry) : null;
