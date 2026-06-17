@@ -338,8 +338,15 @@ const UserCard: React.FC<{
 export const AdminHome: React.FC = () => {
   const { user, setCurrentPage } = useApp();
 
+  const isSuperAdmin = user.role === 'superadmin';
+  const adminCampus = (
+    user.campus.charAt(0).toUpperCase() + user.campus.slice(1).toLowerCase()
+  ) as 'Pekan' | 'Gambang';
+
   const [activeTab, setActiveTab] = useState<AdminTab>('orders');
-  const [campusView, setCampusView] = useState<'Pekan' | 'Gambang'>('Gambang');
+  const [campusView, setCampusView] = useState<'Pekan' | 'Gambang'>(
+    isSuperAdmin ? 'Gambang' : adminCampus
+  );
 
   const [orders, setOrders] = useState<RideOrder[]>([]);
   const [filter, setFilter] = useState<FilterStatus>('all');
@@ -353,7 +360,9 @@ export const AdminHome: React.FC = () => {
   const [invites, setInvites]               = useState<DriverInvite[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
   const [inviteEmail, setInviteEmail]       = useState('');
-  const [inviteCampus, setInviteCampus]     = useState<'Pekan' | 'Gambang'>('Gambang');
+  const [inviteCampus, setInviteCampus]     = useState<'Pekan' | 'Gambang'>(
+    isSuperAdmin ? 'Gambang' : adminCampus
+  );
   const [inviteRole, setInviteRole]         = useState<'driver' | 'admin'>('driver');
   const [inviteCanDrive, setInviteCanDrive] = useState(true);
   const [inviteCanRent,  setInviteCanRent]  = useState(false);
@@ -562,7 +571,11 @@ export const AdminHome: React.FC = () => {
     setUsersLoading(true);
     const { data } = await supabase.rpc('get_all_profiles');
     // Enrich drivers with capability flags from profiles table
-    const users = (data as ProfileUser[]) ?? [];
+    let users = (data as ProfileUser[]) ?? [];
+    // Non-superadmin: scope to their campus only
+    if (!isSuperAdmin) {
+      users = users.filter(u => u.campus.toLowerCase() === adminCampus.toLowerCase());
+    }
     const driverIds = users.filter(u => u.role === 'driver').map(u => u.id);
     if (driverIds.length > 0) {
       const { data: caps } = await supabase
@@ -576,7 +589,7 @@ export const AdminHome: React.FC = () => {
     }
     setProfileUsers(users);
     setUsersLoading(false);
-  }, []);
+  }, [isSuperAdmin, adminCampus]);
 
   const handleToggleCapability = async (u: ProfileUser, canDrive: boolean, canRent: boolean) => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -640,7 +653,10 @@ export const AdminHome: React.FC = () => {
     const { data } = await supabase.rpc('search_profile_by_gerak_id', { p_gerak_id: searchGerakId.trim() });
     setSearching(false);
     const results = data as ProfileUser[] | null;
-    const driver = results?.find(r => r.role === 'driver' || (r.can_drive && ['admin','superadmin'].includes(r.role))) ?? null;
+    const driver = results?.find(r =>
+      (r.role === 'driver' || (r.can_drive && ['admin','superadmin'].includes(r.role))) &&
+      (isSuperAdmin || r.campus.toLowerCase() === adminCampus.toLowerCase())
+    ) ?? null;
     setSearchResult(driver ?? 'not_found');
   };
 
@@ -854,21 +870,29 @@ export const AdminHome: React.FC = () => {
               )}
             </div>
 
-            {/* Campus picker */}
-            <div>
-              <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Campus</p>
-              <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
-                {(['Gambang', 'Pekan'] as const).map(c => (
-                  <button key={c} type="button" onClick={() => setInviteCampus(c)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
-                      inviteCampus === c ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
+            {/* Campus picker — superadmin only; regular admin locked to their campus */}
+            {isSuperAdmin ? (
+              <div>
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">Campus</p>
+                <div className="flex bg-slate-50 border border-slate-200 rounded-2xl p-1 gap-1">
+                  {(['Gambang', 'Pekan'] as const).map(c => (
+                    <button key={c} type="button" onClick={() => setInviteCampus(c)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
+                        inviteCampus === c ? 'bg-primary text-white shadow-sm' : 'text-slate-400'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5">
+                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                <p className="text-xs font-extrabold text-slate-700">UMPSA {adminCampus}</p>
+                <span className="text-[9px] font-bold text-slate-400 ml-auto">campus locked</span>
+              </div>
+            )}
 
             {/* Email input */}
             <div className="relative">
@@ -1281,22 +1305,24 @@ export const AdminHome: React.FC = () => {
       {/* ── ORDERS TAB ── */}
       {activeTab === 'orders' && (
         <div className="flex flex-col gap-4">
-      {/* Campus toggle */}
-      <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
-        {(['Gambang', 'Pekan'] as const).map(c => (
-          <button
-            key={c}
-            onClick={() => setCampusView(c)}
-            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
-              campusView === c
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      {/* Campus toggle — superadmin only */}
+      {isSuperAdmin && (
+        <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm">
+          {(['Gambang', 'Pekan'] as const).map(c => (
+            <button
+              key={c}
+              onClick={() => setCampusView(c)}
+              className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition ${
+                campusView === c
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filter dropdown */}
       <div ref={filterDropdownRef} className="relative">
