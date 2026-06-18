@@ -52,6 +52,7 @@ export const Register: React.FC = () => {
     if (!name || !phone || !email || !password || !confirmPassword) {
       setError('Please fill in all fields.'); return;
     }
+    if (name.trim().length < 2) { setError('Full name must be at least 2 characters.'); return; }
     if (!/^\d{10,15}$/.test(phone.replace(/[\s\-+]/g, ''))) {
       setError('Please enter a valid phone number.'); return;
     }
@@ -160,7 +161,7 @@ export const Register: React.FC = () => {
               <input
                 type="text"
                 value={name}
-                onChange={e => setName(e.target.value.replace(/\b\w/g, c => c.toUpperCase()))}
+                onChange={e => setName(e.target.value.replace(/\S+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-700 focus:outline-none focus:border-primary transition"
                 placeholder="Full name"
                 required
