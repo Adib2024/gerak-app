@@ -74,11 +74,20 @@ export const Profile: React.FC = () => {
       return;
     }
 
-    // 1. Upload image to Supabase Storage
     setUploading(true);
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) { setUploading(false); return; }
 
+    // 1. Delete ALL existing files in this driver's folder (any extension)
+    const { data: existingFiles } = await supabase.storage
+      .from('driver-receipts')
+      .list(authUser.id);
+    if (existingFiles && existingFiles.length > 0) {
+      const oldPaths = existingFiles.map((f: { name: string }) => `${authUser.id}/${f.name}`);
+      await supabase.storage.from('driver-receipts').remove(oldPaths);
+    }
+
+    // 2. Upload new file
     const ext  = file.name.split('.').pop() ?? 'jpg';
     const path = `${authUser.id}/monthly_receipt.${ext}`;
 
@@ -92,7 +101,7 @@ export const Profile: React.FC = () => {
       return;
     }
 
-    // Store signed URL (bucket is private — signed URLs are the only valid access method)
+    // 3. Store signed URL
     const { data: signed } = await supabase.storage
       .from('driver-receipts')
       .createSignedUrl(path, 60 * 60 * 24 * 30);
@@ -100,7 +109,16 @@ export const Profile: React.FC = () => {
     await updateProfile({ feeReceiptUrl: url });
     setUploading(false);
 
-    // 2. Call Edge Function for AI verification
+    // 4. If upload day is 4th or later — skip AI, go straight to PENDING for admin approval
+    const uploadDay = new Date().getDate();
+    if (uploadDay >= 4) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      await refreshUserData();
+      setVerifyMsg('Receipt submitted. Awaiting manual admin approval.');
+      return;
+    }
+
+    // 5. 1st–3rd: Call AI verification Edge Function
     setVerifying(true);
     const { data: session } = await supabase.auth.getSession();
     const result = await supabase.functions.invoke('verify-receipt', {
@@ -117,7 +135,6 @@ export const Profile: React.FC = () => {
     }
 
     await refreshUserData();
-    // Clear inline message — the rejected/verified card now shows the correct state
     setVerifyMsg('');
   };
 
