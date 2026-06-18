@@ -314,10 +314,12 @@ export const DriverHome: React.FC = () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
     const uid = authUser?.id ?? '';
 
+    const RIDE_FIELDS = 'id,customer_name,campus,date,time,pickup,destination,passengers,contact,fare,night_charge,notes,status,driver_id,driver_name,created_at,accepted_at';
+
     // Pool: pending orders for this campus, sorted by scheduled date+time (FIFO)
     let pendingQ = supabase
       .from('ride_orders')
-      .select('*')
+      .select(RIDE_FIELDS)
       .eq('status', 'pending')
       .order('date', { ascending: true })
       .order('time', { ascending: true });
@@ -327,7 +329,7 @@ export const DriverHome: React.FC = () => {
     // Active job (accepted or in_progress)
     const { data: mine } = await supabase
       .from('ride_orders')
-      .select('*')
+      .select(RIDE_FIELDS)
       .eq('driver_id', uid)
       .in('status', ['accepted', 'in_progress'])
       .order('created_at', { ascending: false })
@@ -337,7 +339,7 @@ export const DriverHome: React.FC = () => {
     // Full driver history (completed + cancelled + accepted/in_progress for context)
     const { data: history } = await supabase
       .from('ride_orders')
-      .select('*')
+      .select(RIDE_FIELDS)
       .eq('driver_id', uid)
       .in('status', ['completed', 'cancelled', 'accepted', 'in_progress'])
       .order('created_at', { ascending: false })

@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { MapboxRideMap } from '../components/MapboxRideMap';
 import type { PinLocation } from '../components/MapPicker';
+
+const MapboxRideMap = lazy(() => import('../components/MapboxRideMap').then(m => ({ default: m.MapboxRideMap })));
 import {
   Map, List, ChevronDown, ChevronUp,
   Info, CheckCircle2, RotateCcw, Users, Clock, CalendarDays, Phone, ClipboardList,
@@ -578,11 +579,13 @@ export const Transport: React.FC = () => {
       {/* ── Search Map ── */}
       {bookMode === 'map' && (
         <div className="px-4 mt-3 flex flex-col gap-3">
-          <MapboxRideMap
-            campusCenter={CAMPUS_CENTERS[campus]}
-            onPickupChange={name => setPickupPin(name ? { address: name, coords: [0, 0] } : null)}
-            onDestinationChange={name => setDestPin(name ? { address: name, coords: [0, 0] } : null)}
-          />
+          <Suspense fallback={<div className="flex justify-center py-12"><span className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>}>
+            <MapboxRideMap
+              campusCenter={CAMPUS_CENTERS[campus]}
+              onPickupChange={name => setPickupPin(name ? { address: name, coords: [0, 0] } : null)}
+              onDestinationChange={name => setDestPin(name ? { address: name, coords: [0, 0] } : null)}
+            />
+          </Suspense>
           <p className="text-[10px] text-slate-400 font-semibold text-center italic">
             Fare for map bookings will be confirmed by your driver
           </p>

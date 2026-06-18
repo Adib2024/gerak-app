@@ -512,12 +512,12 @@ export const AdminHome: React.FC = () => {
     setLoading(true);
     const q = supabase
       .from('ride_orders')
-      .select('*')
+      .select('id,customer_name,campus,date,time,pickup,destination,passengers,contact,fare,night_charge,notes,status,driver_id,driver_name,driver_contact,created_at,accepted_at')
       .eq('campus', campusView)
       .order('created_at', { ascending: false });
 
     const { data } = await q;
-    setOrders(data ?? []);
+    setOrders((data as RideOrder[]) ?? []);
     setLoading(false);
   }, [campusView]);
 
@@ -551,7 +551,7 @@ export const AdminHome: React.FC = () => {
     setInvitesLoading(true);
     const { data } = await supabase
       .from('driver_invites')
-      .select('*')
+      .select('id,email,campus,role,can_drive,can_rent,used,used_at,created_at')
       .order('created_at', { ascending: false });
     setInvites(data ?? []);
     setInvitesLoading(false);
@@ -797,7 +797,7 @@ export const AdminHome: React.FC = () => {
     const campus = isSuperAdmin ? campusView : adminCampus;
     const { data } = await supabase
       .from('routes')
-      .select('*')
+      .select('id,campus,point_a,point_b,price,is_active,created_at')
       .eq('campus', campus)
       .order('point_a');
     setRoutes(data ?? []);
