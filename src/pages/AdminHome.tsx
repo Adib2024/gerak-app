@@ -861,25 +861,6 @@ export const AdminHome: React.FC = () => {
     <>
     <div className="flex-grow bg-slate-50/50 overflow-y-auto overflow-x-hidden no-scrollbar pb-6 px-4 animate-fade-in flex flex-col gap-4 touch-pan-y">
 
-      {/* Header */}
-      <div className="mt-4 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-black text-slate-800 m-0">Admin Panel</h2>
-            <span className="bg-primary/10 text-primary text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-              {user.role}
-            </span>
-          </div>
-          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{user.name} · {user.gerakId}</p>
-        </div>
-        <button
-          onClick={() => activeTab === 'orders' ? loadOrders() : activeTab === 'drivers' ? loadInvites() : activeTab === 'users' ? loadUsers() : activeTab === 'receipts' ? loadReceipts() : loadAnnouncements()}
-          className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-primary transition active:scale-90"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-
       {/* Toast */}
       {toast && (
         <div className="fixed top-16 left-4 right-4 z-50 bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg text-center animate-fade-in">
@@ -890,8 +871,29 @@ export const AdminHome: React.FC = () => {
       {/* Profile sheet */}
       {sheetUser && <ProfileSheet u={sheetUser} onClose={() => setSheetUser(null)} />}
 
-      {/* Tab switcher — sticky so clicking off-screen tabs never scrolls the page */}
-      <div className="sticky top-0 z-10 -mx-4 px-4 pb-2 bg-slate-50/95 backdrop-blur-sm">
+      {/* Sticky header + tab switcher */}
+      <div className="sticky top-0 z-10 -mx-4 px-4 pt-4 pb-2 bg-slate-50/95 backdrop-blur-sm flex flex-col gap-3">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-black text-slate-800 m-0">Admin Panel</h2>
+              <span className="bg-primary/10 text-primary text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                {user.role}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{user.name} · {user.gerakId}</p>
+          </div>
+          <button
+            onClick={() => activeTab === 'orders' ? loadOrders() : activeTab === 'drivers' ? loadInvites() : activeTab === 'users' ? loadUsers() : activeTab === 'receipts' ? loadReceipts() : loadAnnouncements()}
+            className="w-8 h-8 flex items-center justify-center rounded-xl bg-white border border-slate-100 text-slate-400 hover:text-primary transition active:scale-90"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Tab bar */}
       <div className="flex bg-white border border-slate-100 rounded-2xl p-1 gap-1 shadow-sm overflow-x-auto no-scrollbar">
         {([
           { id: 'orders',   label: 'Orders',    icon: BarChart3,  superadminOnly: false },
